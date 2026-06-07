@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f6feb">
+  <title>JR Recitation App</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f6f9;
+      color: #1f2937;
+      text-align: center;
+    }
+
+    .app {
+      max-width: 760px;
+      min-height: 100vh;
+      margin: 0 auto;
+      background: white;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: #1f6feb;
+      color: white;
+      padding: 12px 14px 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .tab-button {
+      min-height: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.16);
+      color: white;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .tab-button.active {
+      background: white;
+      color: #1f4e96;
+      border-color: white;
+    }
+
+    .content {
+      padding: 16px;
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 16px;
+      border-radius: 6px;
+    }
+
+    input,
+    select {
+      min-height: 46px;
+      padding: 10px 11px;
+      border: 1px solid #cbd5e1;
+      margin-bottom: 10px;
+      background: white;
+    }
+
+    button {
+      min-height: 46px;
+      padding: 11px;
+      border: 0;
+      background: #1f6feb;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #e2e8f0;
+      color: #1f2937;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .panel {
+      border-top: 1px solid #e5e7eb;
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+
+    .panel:first-child {
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
+    }
+
+    .panel-title {
+      margin: 0 0 10px;
+      color: #334155;
+      font-size: 15px;
+      font-weight: bold;
+      text-align: left;
+    }
+
+    .manual-row,
+    .filter-row,
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+
+    .manual-row button,
+    .filter-row button {
+      width: 130px;
+    }
+
+    .actions {
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .quick-points {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+
+    .quick-points button {
+      margin-top: 0;
+      padding: 10px 6px;
+      min-height: 42px;
+      background: #eef4ff;
+      color: #1f4e96;
+      border: 1px solid #b8cdf5;
+    }
+
+    .quick-points button.active {
+      background: #1f6feb;
+      color: white;
+      border-color: #1f6feb;
+    }
+
+    #reader {
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 15px;
+    }
+
+    .result {
+      display: none;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      text-align: center;
+      white-space: pre-line;
+    }
+
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .loading,
+    .scanning {
+      background: #e2e3e5;
+      color: #383d41;
+      border: 1px solid #d6d8db;
+    }
+
+    .recent-panel {
+      margin-top: 16px;
+      text-align: left;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 12px;
+      display: none;
+    }
+
+    .recent-panel h3 {
+      margin: 0 0 8px;
+      color: #2c3e50;
+      font-size: 15px;
+    }
+
+    .recent-list,
+    .student-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+      padding-bottom: 20px;
+    }
+
+    .recent-item,
+    .student-card {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 7px;
+      padding: 10px 12px;
+      color: #334155;
+      font-size: 14px;
+      line-height: 1.35;
+      white-space: pre-line;
+      text-align: left;
+    }
+
+    .student-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .student-card:active {
+      background: #eef4ff;
+    }
+
+    .student-name {
+      font-weight: bold;
+      color: #1f2937;
+      line-height: 1.3;
+    }
+
+    .student-meta {
+      color: #64748b;
+      font-size: 13px;
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    .points {
+      font-weight: bold;
+      color: #155724;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .empty {
+      text-align: center;
+      color: #64748b;
+      padding: 18px 8px;
+    }
+
+    @media (max-width: 560px) {
+      .manual-row,
+      .filter-row,
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .manual-row button,
+      .filter-row button {
+        width: 100%;
+      }
+
+      .student-card {
+        grid-template-columns: 1fr;
+      }
+
+      .points {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <h1>JR Recitation App</h1>
+      <div class="tabs">
+        <button id="scannerTab" class="tab-button active" type="button">Scanner</button>
+        <button id="adminTab" class="tab-button" type="button">Admin</button>
+      </div>
+    </header>
+
+    <section class="content">
+      <div id="scannerView" class="view active">
+        <div class="panel">
+          <input type="text" id="activity" value="Recitation" placeholder="Activity Name">
+          <input type="number" id="points" value="1" min="1" placeholder="Points to award">
+          <div class="quick-points">
+            <button class="quick-point active" type="button" data-points="1">+1</button>
+            <button class="quick-point" type="button" data-points="2">+2</button>
+            <button class="quick-point" type="button" data-points="3">+3</button>
+            <button class="quick-point" type="button" data-points="5">+5</button>
+          </div>
+          <div class="manual-row">
+            <input type="text" id="manualStudentId" placeholder="Type Student ID">
+            <button id="manualButton" type="button">Record</button>
+          </div>
+          <button id="startButton" type="button">Start Camera Scanner</button>
+          <div id="reader"></div>
+          <div id="scannerResult" class="result"></div>
+          <div id="recentPanel" class="recent-panel">
+            <h3>Recent Scans</h3>
+            <div id="recentList" class="recent-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminView" class="view">
+        <div class="panel">
+          <input type="password" id="pin" placeholder="Teacher PIN">
+        </div>
+
+        <div class="panel">
+          <p class="panel-title">Add / Edit Student</p>
+          <input type="text" id="adminStudentId" placeholder="Student ID">
+          <input type="text" id="adminFullName" placeholder="Full Name">
+          <input type="text" id="adminSection" list="sectionOptions" placeholder="Section">
+          <datalist id="sectionOptions"></datalist>
+          <div class="actions">
+            <button id="addButton" type="button">Add Student</button>
+            <button id="editButton" class="secondary" type="button">Save Edit</button>
+          </div>
+        </div>
+
+        <div id="adminResult" class="result"></div>
+
+        <div class="panel">
+          <p class="panel-title">Students</p>
+          <div class="filter-row">
+            <select id="sectionFilter">
+              <option value="">All sections</option>
+            </select>
+            <button id="refreshButton" class="secondary" type="button">Refresh</button>
+          </div>
+          <div id="studentList" class="student-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SCANNER_API_URL = "https://script.google.com/macros/s/AKfycbw_p9PbNEfBxTCw2LamJ8aBxI9Y7-QUMCeNUAhrU3h0qu3CoUAqWGug3I4jORIzSY0U/exec";
+    const ADMIN_API_URL = "PASTE_ADMIN_APPS_SCRIPT_EXEC_URL_HERE";
+
+    const scannerTab = document.getElementById("scannerTab");
+    const adminTab = document.getElementById("adminTab");
+    const scannerView = document.getElementById("scannerView");
+    const adminView = document.getElementById("adminView");
+
+    function switchView(viewName) {
+      const showScanner = viewName === "scanner";
+      scannerTab.classList.toggle("active", showScanner);
+      adminTab.classList.toggle("active", !showScanner);
+      scannerView.classList.toggle("active", showScanner);
+      adminView.classList.toggle("active", !showScanner);
+    }
+
+    scannerTab.addEventListener("click", () => switchView("scanner"));
+    adminTab.addEventListener("click", () => switchView("admin"));
+
+    const startButton = document.getElementById("startButton");
+    const manualButton = document.getElementById("manualButton");
+    const manualStudentId = document.getElementById("manualStudentId");
+    const pointsInput = document.getElementById("points");
+    const scannerResult = document.getElementById("scannerResult");
+    const recentPanel = document.getElementById("recentPanel");
+    const recentList = document.getElementById("recentList");
+    const quickPointButtons = Array.from(document.querySelectorAll(".quick-point"));
+    const scanner = new Html5Qrcode("reader", {
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      verbose: false
+    });
+
+    let isProcessing = false;
+    let scannerStarted = false;
+    let audioContext = null;
+    const recentScans = [];
+
+    function showResult(target, type, message) {
+      target.style.display = "block";
+      target.className = "result " + type;
+      target.innerText = message;
+    }
+
+    function vibrate(pattern) {
+      if ("vibrate" in navigator) {
+        navigator.vibrate(pattern);
+      }
+    }
+
+    function unlockFeedback() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      if (!audioContext) audioContext = new AudioContext();
+      if (audioContext.state === "suspended") audioContext.resume();
+    }
+
+    function beep(frequency, duration, volume) {
+      unlockFeedback();
+      if (!audioContext || audioContext.state !== "running") return;
+
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.value = volume;
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      setTimeout(() => oscillator.stop(), duration);
+    }
+
+    function playSuccessFeedback() {
+      vibrate(80);
+      beep(880, 90, 0.08);
+    }
+
+    function playErrorFeedback() {
+      vibrate([80, 60, 140]);
+      beep(220, 160, 0.1);
+    }
+
+    function callJsonp(url, params, prefix) {
+      return new Promise((resolve, reject) => {
+        const callbackName = prefix + Date.now() + "_" + Math.floor(Math.random() * 100000);
+        const script = document.createElement("script");
+        const query = new URLSearchParams();
+
+        Object.keys(params).forEach((key) => {
+          query.set(key, params[key]);
+        });
+
+        query.set("callback", callbackName);
+
+        const timeoutId = setTimeout(() => {
+          cleanup();
+          reject(new Error("Backend request timed out."));
+        }, 10000);
+
+        function cleanup() {
+          clearTimeout(timeoutId);
+          delete window[callbackName];
+          script.remove();
+        }
+
+        window[callbackName] = (data) => {
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error("Could not reach backend."));
+        };
+
+        script.src = url + "?" + query.toString();
+        document.body.appendChild(script);
+      });
+    }
+
+    function addRecentScan(message) {
+      recentScans.unshift(message);
+      if (recentScans.length > 5) recentScans.pop();
+      recentPanel.style.display = "block";
+      recentList.innerHTML = "";
+
+      recentScans.forEach((scan) => {
+        const item = document.createElement("div");
+        item.className = "recent-item";
+        item.innerText = scan;
+        recentList.appendChild(item);
+      });
+    }
+
+    function updateQuickPointButtons() {
+      const selectedPoints = pointsInput.value;
+      quickPointButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.points === selectedPoints);
+      });
+    }
+
+    function releaseScannerProcessing() {
+      isProcessing = false;
+      manualButton.disabled = false;
+      if (scannerStarted) scanner.resume();
+    }
+
+    async function sendStudentId(studentIdValue) {
+      const studentId = String(studentIdValue || "").trim();
+      const activity = document.getElementById("activity").value.trim();
+      const points = Number(pointsInput.value);
+
+      if (!studentId) {
+        showResult(scannerResult, "error", "Please enter or scan a Student ID.");
+        releaseScannerProcessing();
+        return;
+      }
+
+      if (!activity) {
+        showResult(scannerResult, "error", "Please enter an activity name.");
+        releaseScannerProcessing();
+        return;
+      }
+
+      if (!Number.isFinite(points) || points <= 0) {
+        showResult(scannerResult, "error", "Please enter valid points.");
+        releaseScannerProcessing();
+        return;
+      }
+
+      showResult(scannerResult, "scanning", "Processing Student ID...");
+
+      try {
+        const data = await callJsonp(SCANNER_API_URL, {
+          qrText: studentId,
+          activity,
+          points: String(points)
+        }, "scannerCallback_");
+
+        showResult(scannerResult, data.status === "success" ? "success" : "error", data.message);
+
+        if (data.status === "success") {
+          playSuccessFeedback();
+          addRecentScan(data.message);
+        } else {
+          playErrorFeedback();
+        }
+
+        setTimeout(releaseScannerProcessing, 1200);
+      } catch (error) {
+        showResult(scannerResult, "error", "System Error: " + error.message);
+        playErrorFeedback();
+        releaseScannerProcessing();
+      }
+    }
+
+    function recordManualStudentId() {
+      if (isProcessing) return;
+      unlockFeedback();
+
+      const studentId = manualStudentId.value.trim();
+      if (!studentId) {
+        showResult(scannerResult, "error", "Please type a Student ID.");
+        manualStudentId.focus();
+        return;
+      }
+
+      isProcessing = true;
+      manualButton.disabled = true;
+      if (scannerStarted) scanner.pause(true);
+      manualStudentId.value = "";
+      sendStudentId(studentId);
+    }
+
+    async function startScanner() {
+      if (scannerStarted) return;
+      unlockFeedback();
+      startButton.disabled = true;
+      showResult(scannerResult, "scanning", "Starting camera...");
+
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1, disableFlip: true },
+          (decodedText) => {
+            if (isProcessing) return;
+            isProcessing = true;
+            scanner.pause(true);
+            sendStudentId(decodedText);
+          }
+        );
+
+        scannerStarted = true;
+        showResult(scannerResult, "success", "Camera scanner ready.");
+      } catch (error) {
+        startButton.disabled = false;
+        showResult(scannerResult, "error", "Camera Error: " + error.message);
+      }
+    }
+
+    startButton.addEventListener("click", startScanner);
+    manualButton.addEventListener("click", recordManualStudentId);
+    pointsInput.addEventListener("input", updateQuickPointButtons);
+    quickPointButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        unlockFeedback();
+        pointsInput.value = button.dataset.points;
+        updateQuickPointButtons();
+      });
+    });
+    manualStudentId.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") recordManualStudentId();
+    });
+
+    const pinInput = document.getElementById("pin");
+    const adminStudentId = document.getElementById("adminStudentId");
+    const adminFullName = document.getElementById("adminFullName");
+    const adminSection = document.getElementById("adminSection");
+    const sectionOptions = document.getElementById("sectionOptions");
+    const addButton = document.getElementById("addButton");
+    const editButton = document.getElementById("editButton");
+    const refreshButton = document.getElementById("refreshButton");
+    const sectionFilter = document.getElementById("sectionFilter");
+    const studentList = document.getElementById("studentList");
+    const adminResult = document.getElementById("adminResult");
+
+    function setAdminBusy(isBusy) {
+      addButton.disabled = isBusy;
+      editButton.disabled = isBusy;
+      refreshButton.disabled = isBusy;
+    }
+
+    function getPin() {
+      const pin = pinInput.value.trim();
+      if (!pin) {
+        showResult(adminResult, "error", "Enter teacher PIN first.");
+        pinInput.focus();
+      }
+      return pin;
+    }
+
+    async function runAdminAction(params) {
+      if (ADMIN_API_URL.includes("PASTE_ADMIN")) {
+        showResult(adminResult, "error", "Set ADMIN_API_URL first.");
+        return null;
+      }
+
+      const pin = getPin();
+      if (!pin) return null;
+
+      setAdminBusy(true);
+      showResult(adminResult, "loading", "Working...");
+
+      try {
+        const data = await callJsonp(ADMIN_API_URL, {
+          ...params,
+          pin
+        }, "adminCallback_");
+        showResult(adminResult, data.status === "success" ? "success" : "error", data.message || "Done.");
+        return data;
+      } catch (error) {
+        showResult(adminResult, "error", "System Error: " + error.message);
+        return null;
+      } finally {
+        setAdminBusy(false);
+      }
+    }
+
+    function renderSections(sections) {
+      const currentValue = sectionFilter.value;
+      sectionFilter.innerHTML = '<option value="">All sections</option>';
+      sectionOptions.innerHTML = "";
+
+      sections.forEach((sectionName) => {
+        const filterOption = document.createElement("option");
+        filterOption.value = sectionName;
+        filterOption.innerText = sectionName;
+        sectionFilter.appendChild(filterOption);
+
+        const inputOption = document.createElement("option");
+        inputOption.value = sectionName;
+        sectionOptions.appendChild(inputOption);
+      });
+
+      sectionFilter.value = currentValue;
+    }
+
+    function renderStudents(students) {
+      studentList.innerHTML = "";
+
+      if (students.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.innerText = "No students found.";
+        studentList.appendChild(empty);
+        return;
+      }
+
+      students.forEach((student) => {
+        const card = document.createElement("div");
+        const details = document.createElement("div");
+        const name = document.createElement("div");
+        const meta = document.createElement("div");
+        const points = document.createElement("div");
+
+        card.className = "student-card";
+        name.className = "student-name";
+        meta.className = "student-meta";
+        points.className = "points";
+        name.innerText = student.fullName;
+        meta.innerText = student.studentId + " | " + student.section;
+        points.innerText = student.totalPoints + " pts";
+
+        details.appendChild(name);
+        details.appendChild(meta);
+        card.appendChild(details);
+        card.appendChild(points);
+
+        card.addEventListener("click", () => {
+          adminStudentId.value = student.studentId;
+          adminFullName.value = student.fullName;
+          adminSection.value = student.section;
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        studentList.appendChild(card);
+      });
+    }
+
+    async function loadDashboard() {
+      const data = await runAdminAction({
+        action: "loadDashboard",
+        section: sectionFilter.value
+      });
+
+      if (!data || data.status !== "success") return;
+      renderSections(data.sections || []);
+      renderStudents(data.students || []);
+    }
+
+    async function saveStudent(action) {
+      const data = await runAdminAction({
+        action,
+        studentId: adminStudentId.value.trim(),
+        fullName: adminFullName.value.trim(),
+        section: adminSection.value.trim()
+      });
+
+      if (data && data.status === "success") {
+        adminFullName.value = "";
+        adminSection.value = "";
+        if (data.sections && data.students) {
+          renderSections(data.sections);
+          renderStudents(data.students);
+        }
+      }
+    }
+
+    addButton.addEventListener("click", () => saveStudent("addStudent"));
+    editButton.addEventListener("click", () => saveStudent("editStudent"));
+    refreshButton.addEventListener("click", loadDashboard);
+    sectionFilter.addEventListener("change", loadDashboard);
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js");
+      });
+    }
+  </script>
+</body>
+</html>

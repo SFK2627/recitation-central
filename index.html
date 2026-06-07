@@ -178,6 +178,10 @@
       margin-top: 15px;
     }
 
+    #startButton {
+      margin-top: 10px;
+    }
+
     .result {
       display: none;
       margin-top: 12px;
@@ -300,6 +304,16 @@
         text-align: left;
       }
     }
+
+    @media (max-width: 720px) {
+      .manual-row {
+        grid-template-columns: 1fr;
+      }
+
+      .manual-row button {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -370,7 +384,7 @@
     </section>
   </main>
 
-  <script>
+    <script>
     const SCANNER_API_URL = "https://script.google.com/macros/s/AKfycbw_p9PbNEfBxTCw2LamJ8aBxI9Y7-QUMCeNUAhrU3h0qu3CoUAqWGug3I4jORIzSY0U/exec";
     const ADMIN_API_URL = const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbwFpn8Pe0qu1YgibZzlbsOwB0ijK078Z2aWaykB0bn5LJzWdmrjW3xbuyVTz16qTJMqlA/exec";
 

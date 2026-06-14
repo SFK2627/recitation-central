@@ -1,0 +1,347 @@
+const SPREADSHEET_ID = "1QkcOncVf5_G0aDRlYERyR2gJZx_ZLNgebdDLJ9i0fNU";
+const ADMIN_PIN = "1234";
+
+const DATABASE_SHEET_NAME = "Database";
+const RECITATION_LOGS_SHEET_NAME = "Recitation Logs";
+
+function doGet(e) {
+  e = e || { parameter: {} };
+  const callback = e.parameter.callback;
+
+  if (!callback) {
+    return ContentService
+      .createTextOutput("Recitation Admin API is running.")
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
+
+  let result;
+
+  try {
+    result = processAdminAction(e.parameter);
+  } catch (error) {
+    result = {
+      status: "error",
+      message: "Backend error: " + error.message
+    };
+  }
+
+  return ContentService
+    .createTextOutput(callback + "(" + JSON.stringify(result) + ");")
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+function processAdminAction(payload) {
+  const action = String(payload.action || "").trim();
+
+  // PUBLIC READ-ONLY ACTIONS FOR view.html
+  // No PIN needed. These only read sections and total points.
+  if (action === "publicListSections") {
+    return listSections();
+  }
+
+  if (action === "publicLeaderboard") {
+    return publicLeaderboard(String(payload.section || "").trim());
+  }
+
+  // ADMIN ACTIONS BELOW THIS LINE REQUIRE PIN
+  const pin = String(payload.pin || "").trim();
+
+  if (pin !== ADMIN_PIN) {
+    return {
+      status: "error",
+      message: "Invalid admin PIN."
+    };
+  }
+
+  if (action === "listSections") {
+    return listSections();
+  }
+
+  if (action === "listStudents") {
+    return listStudentsBySection(String(payload.section || "").trim());
+  }
+
+  if (action === "loadDashboard") {
+    return loadDashboard(String(payload.section || "").trim());
+  }
+
+  if (action === "addStudent") {
+    return addStudent(payload);
+  }
+
+  if (action === "editStudent") {
+    return editStudent(payload);
+  }
+
+  return {
+    status: "error",
+    message: "Unknown admin action."
+  };
+}
+
+function publicLeaderboard(section) {
+  const latestMap = getLatestRecitationMap();
+
+  const students = getStudentsBySection(section).map(function(student) {
+    const latest = latestMap[student.studentId] || {};
+
+    return {
+      studentId: student.studentId,
+      fullName: student.fullName,
+      section: student.section,
+      totalPoints: student.totalPoints,
+      latestRecitationAt: latest.latestRecitationAt || "",
+      latestRecitationMillis: latest.latestRecitationMillis || 0,
+      latestRecitationPoints: latest.latestRecitationPoints || 0,
+      latestRecitationText: latest.latestRecitationText || "",
+      latestRecitationRow: latest.latestRecitationRow || 0
+    };
+  });
+
+  return {
+    status: "success",
+    section: section,
+    sections: getSections(),
+    students: students,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function getLatestRecitationMap() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(RECITATION_LOGS_SHEET_NAME);
+
+  if (!sheet) {
+    return {};
+  }
+
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return {};
+  }
+
+  // Expected Recitation Logs columns based on your Database formula:
+  // A = Timestamp, C = Student ID, F = Points
+  const rows = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
+  const latestMap = {};
+  const timeZone = Session.getScriptTimeZone();
+
+  rows.forEach(function(row, index) {
+    const studentId = String(row[2] || "").trim();
+    if (!studentId) return;
+
+    const timestampValue = row[0];
+    const pointsValue = Number(row[5]) || 0;
+    const rowOrder = index + 2;
+    let millis = 0;
+    let text = "";
+    let iso = "";
+
+    if (timestampValue instanceof Date) {
+      millis = timestampValue.getTime();
+      iso = timestampValue.toISOString();
+      text = Utilities.formatDate(timestampValue, timeZone, "MMM d, h:mm:ss a");
+    } else if (timestampValue) {
+      const parsedDate = new Date(timestampValue);
+      if (!isNaN(parsedDate.getTime())) {
+        millis = parsedDate.getTime();
+        iso = parsedDate.toISOString();
+        text = Utilities.formatDate(parsedDate, timeZone, "MMM d, h:mm:ss a");
+      }
+    }
+
+    // Fallback: if timestamp is missing/invalid, use row order so newest log row still wins.
+    if (!millis) {
+      millis = rowOrder;
+      text = "latest scan";
+    }
+
+    const previous = latestMap[studentId];
+    const isNewer = !previous ||
+      millis > previous.latestRecitationMillis ||
+      (millis === previous.latestRecitationMillis && rowOrder > previous.latestRecitationRow);
+
+    if (isNewer) {
+      latestMap[studentId] = {
+        latestRecitationAt: iso,
+        latestRecitationMillis: millis,
+        latestRecitationPoints: pointsValue,
+        latestRecitationText: text,
+        latestRecitationRow: rowOrder
+      };
+    }
+  });
+
+  return latestMap;
+}
+
+function listSections() {
+  return {
+    status: "success",
+    sections: getSections()
+  };
+}
+
+function listStudentsBySection(section) {
+  return {
+    status: "success",
+    students: getStudentsBySection(section)
+  };
+}
+
+function loadDashboard(section) {
+  return {
+    status: "success",
+    sections: getSections(),
+    students: getStudentsBySection(section)
+  };
+}
+
+function getSections() {
+  const sheet = getDatabaseSheet();
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return [];
+  }
+
+  const sections = sheet
+    .getRange(2, 3, lastRow - 1, 1)
+    .getValues()
+    .map(function(row) {
+      return String(row[0] || "").trim();
+    })
+    .filter(Boolean);
+
+  return Array.from(new Set(sections)).sort();
+}
+
+function getStudentsBySection(section) {
+  const sheet = getDatabaseSheet();
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return [];
+  }
+
+  const rows = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+
+  return rows
+    .map(function(row) {
+      return {
+        studentId: String(row[0] || "").trim(),
+        fullName: String(row[1] || "").trim(),
+        section: String(row[2] || "").trim(),
+        totalPoints: Number(row[3]) || 0
+      };
+    })
+    .filter(function(student) {
+      return student.studentId && (!section || student.section === section);
+    })
+    .sort(function(a, b) {
+      return a.fullName.localeCompare(b.fullName);
+    });
+}
+
+function addStudent(payload) {
+  const sheet = getDatabaseSheet();
+  const studentId = String(payload.studentId || "").trim();
+  const fullName = String(payload.fullName || "").trim();
+  const section = String(payload.section || "").trim();
+
+  if (!studentId || !fullName || !section) {
+    return {
+      status: "error",
+      message: "Student ID, full name, and section are required."
+    };
+  }
+
+  if (findStudentRow(sheet, studentId)) {
+    return {
+      status: "error",
+      message: "Student ID already exists: " + studentId
+    };
+  }
+
+  const nextRow = sheet.getLastRow() + 1;
+
+  sheet.getRange(nextRow, 1, 1, 4).setValues([[
+    studentId,
+    fullName,
+    section,
+    "=SUMIF('Recitation Logs'!C:C,A" + nextRow + ",'Recitation Logs'!F:F)"
+  ]]);
+
+  return {
+    status: "success",
+    message: "Added: " + fullName,
+    sections: getSections(),
+    students: getStudentsBySection(section)
+  };
+}
+
+function editStudent(payload) {
+  const sheet = getDatabaseSheet();
+  const studentId = String(payload.studentId || "").trim();
+  const fullName = String(payload.fullName || "").trim();
+  const section = String(payload.section || "").trim();
+  const rowNumber = findStudentRow(sheet, studentId);
+
+  if (!rowNumber) {
+    return {
+      status: "error",
+      message: "Student ID not found: " + studentId
+    };
+  }
+
+  if (!fullName || !section) {
+    return {
+      status: "error",
+      message: "Full name and section are required."
+    };
+  }
+
+  sheet.getRange(rowNumber, 2, 1, 2).setValues([[fullName, section]]);
+
+  return {
+    status: "success",
+    message: "Updated: " + fullName,
+    sections: getSections(),
+    students: getStudentsBySection(section)
+  };
+}
+
+function findStudentRow(sheet, studentId) {
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return null;
+  }
+
+  const match = sheet
+    .getRange(2, 1, lastRow - 1, 1)
+    .createTextFinder(studentId)
+    .matchEntireCell(true)
+    .findNext();
+
+  return match ? match.getRow() : null;
+}
+
+function getDatabaseSheet() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(DATABASE_SHEET_NAME);
+
+  if (!sheet) {
+    throw new Error("Missing sheet: " + DATABASE_SHEET_NAME);
+  }
+
+  return sheet;
+}
+
+function testOpenSheet() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(DATABASE_SHEET_NAME);
+  Logger.log("Spreadsheet name: " + spreadsheet.getName());
+  Logger.log("Sheet found: " + (sheet ? sheet.getName() : "NO DATABASE SHEET"));
+}

@@ -994,6 +994,7 @@
     const REQUEST_TIMEOUT_MS = 18000;
     const SCANNER_REQUEST_TIMEOUT_MS = 30000;
     const PENDING_SCANS_KEY = "recitationPendingScansV1";
+    const BATCH_SYNC_SIZE = 10;
 
     let scanPauseActive = false;
     let queueProcessing = false;
@@ -1256,29 +1257,30 @@
       while (scanQueue.length > 0) {
         if (!navigator.onLine) break;
 
-        const scanItem = scanQueue[0];
-        scanItem.attempts = Number(scanItem.attempts || 0) + 1;
+        const batch = scanQueue.slice(0, BATCH_SYNC_SIZE);
+        batch.forEach((scanItem) => {
+          scanItem.attempts = Number(scanItem.attempts || 0) + 1;
+        });
         savePendingScans();
 
         showResult(
           scannerResult,
           "scanning",
-          "Syncing: " + scanItem.studentId + " (+" + scanItem.points + ")\n" + getPendingText()
+          "Syncing " + batch.length + " scan(s)...\n" + getPendingText()
         );
 
-        const canRemove = await sendScanToBackend(scanItem);
+        const canRemove = await sendScanBatchToBackend(batch);
 
         if (!canRemove) {
           showResult(
             scannerResult,
             "queued",
-            "Backend sync delayed: " + scanItem.studentId + "\n" +
-              getPendingText() + " saved on this device."
+            "Backend sync delayed.\n" + getPendingText() + " saved on this device."
           );
           break;
         }
 
-        scanQueue.shift();
+        scanQueue.splice(0, batch.length);
         savePendingScans();
       }
 
@@ -1325,6 +1327,43 @@
           "queued",
           "Backend did not respond yet.\n" +
             scanItem.studentId + " stays pending and will retry."
+        );
+        return false;
+      }
+    }
+
+    async function sendScanBatchToBackend(batch) {
+      if (batch.length === 1) {
+        return sendScanToBackend(batch[0]);
+      }
+
+      try {
+        const data = await callJsonp(SCANNER_API_URL, {
+          scans: JSON.stringify(batch.map((scanItem) => ({
+            studentId: scanItem.studentId,
+            qrText: scanItem.studentId,
+            activity: scanItem.activity,
+            points: String(scanItem.points),
+            requestId: scanItem.id
+          })))
+        }, "scannerBatchCallback_", SCANNER_REQUEST_TIMEOUT_MS);
+
+        const resultType = data.status === "success" ? "success" : "error";
+        showResult(scannerResult, resultType, data.message || "Batch sync finished.");
+
+        if (data.status === "success") {
+          playSuccessFeedback();
+          addRecentScan(data.message || "Batch sync finished.");
+          return true;
+        }
+
+        playErrorFeedback();
+        return true;
+      } catch (error) {
+        showResult(
+          scannerResult,
+          "queued",
+          "Backend did not respond yet.\n" + batch.length + " scan(s) stay pending."
         );
         return false;
       }

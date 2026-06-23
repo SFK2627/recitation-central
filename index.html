@@ -767,12 +767,116 @@
       line-height: 1.35;
     }
 
+    .admin-list-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .admin-list-header .panel-title {
+      margin: 0;
+    }
+
+    .add-student-button {
+      width: 48px;
+      min-height: 48px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--yellow), var(--gold));
+      color: var(--black);
+      font-size: 28px;
+      line-height: 1;
+      box-shadow: 0 12px 24px rgba(245, 158, 11, 0.20);
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      place-items: center;
+      padding: 14px;
+      background: rgba(15, 23, 42, 0.58);
+      backdrop-filter: blur(6px);
+    }
+
+    .modal-backdrop.active {
+      display: grid;
+    }
+
+    .student-modal {
+      width: min(540px, 100%);
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      border-radius: 8px;
+      padding: 16px;
+      background:
+        radial-gradient(circle at top right, rgba(255, 212, 59, 0.28), transparent 38%),
+        #ffffff;
+      box-shadow: 0 28px 70px rgba(15, 23, 42, 0.32);
+    }
+
+    .modal-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 25px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .modal-eyebrow {
+      margin-bottom: 7px;
+      color: #92400e;
+      background: #fff7d6;
+      border-color: rgba(245, 158, 11, 0.28);
+    }
+
+    .modal-close {
+      width: 44px;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--black);
+      font-size: 26px;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .modal-actions {
+      margin-top: 12px;
+    }
+
+    input:disabled {
+      background: #f1f5f9;
+      color: #64748b;
+      opacity: 1;
+    }
+
     .sync-button {
       display: none;
       margin-top: 10px;
       border: 1px solid rgba(245, 158, 11, 0.28);
       background: #ffffff;
       color: var(--black);
+    }
+
+    .danger-sync-button {
+      border-color: #fecaca;
+      background: #fff1f2;
+      color: #991b1b;
     }
 
     @media (max-width: 680px) {
@@ -823,6 +927,14 @@
 
       .points {
         text-align: right;
+      }
+
+      .student-modal {
+        padding: 14px;
+      }
+
+      .modal-header h2 {
+        font-size: 23px;
       }
     }
 
@@ -889,6 +1001,7 @@
           <div id="reader"></div>
           <div id="scannerResult" class="result"></div>
           <button id="syncPendingButton" class="sync-button" type="button">Sync Pending Now</button>
+          <button id="clearReviewButton" class="sync-button danger-sync-button" type="button">Clear Needs Review</button>
           <div id="recentPanel" class="recent-panel">
             <h3>Recent Scans</h3>
             <div id="recentList" class="recent-list"></div>
@@ -902,33 +1015,13 @@
           <input type="password" id="pin" placeholder="Teacher PIN">
         </div>
 
-        <div class="panel">
-          <p class="panel-title">Add / Edit Student</p>
-          <div class="admin-form-grid">
-            <div class="field">
-              <label for="adminStudentId">Student ID</label>
-              <input type="text" id="adminStudentId" placeholder="Student ID">
-            </div>
-            <div class="field">
-              <label for="adminFullName">Full Name</label>
-              <input type="text" id="adminFullName" placeholder="Full Name">
-            </div>
-            <div class="field wide">
-              <label for="adminSection">Section</label>
-              <input type="text" id="adminSection" list="sectionOptions" placeholder="Section">
-              <datalist id="sectionOptions"></datalist>
-            </div>
-          </div>
-          <div class="actions">
-            <button id="addButton" type="button">Add Student</button>
-            <button id="editButton" class="secondary" type="button">Save Edit</button>
-          </div>
-        </div>
-
         <div id="adminResult" class="result"></div>
 
         <div class="panel">
-          <p class="panel-title">Students</p>
+          <div class="admin-list-header">
+            <p class="panel-title">Students</p>
+            <button id="openStudentModalButton" class="add-student-button" type="button" aria-label="Add student">+</button>
+          </div>
           <div class="filter-row">
             <div class="field">
               <label for="sectionFilter">Section Filter</label>
@@ -955,6 +1048,39 @@
     </section>
   </main>
 
+  <div id="studentModal" class="modal-backdrop" aria-hidden="true">
+    <div class="student-modal" role="dialog" aria-modal="true" aria-labelledby="studentModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow modal-eyebrow">Student Record</p>
+          <h2 id="studentModalTitle">Add Student</h2>
+        </div>
+        <button id="closeStudentModalButton" class="modal-close" type="button" aria-label="Close student form">x</button>
+      </div>
+
+      <div class="admin-form-grid">
+        <div class="field">
+          <label for="adminStudentId">Student ID</label>
+          <input type="text" id="adminStudentId" placeholder="Student ID">
+        </div>
+        <div class="field">
+          <label for="adminFullName">Full Name</label>
+          <input type="text" id="adminFullName" placeholder="Full Name">
+        </div>
+        <div class="field wide">
+          <label for="adminSection">Section</label>
+          <input type="text" id="adminSection" list="sectionOptions" placeholder="Section">
+          <datalist id="sectionOptions"></datalist>
+        </div>
+      </div>
+
+      <div class="actions modal-actions">
+        <button id="addButton" type="button">Add Student</button>
+        <button id="editButton" class="secondary" type="button">Save Edit</button>
+      </div>
+    </div>
+  </div>
+
     <script>
     const SCANNER_API_URL = "https://script.google.com/macros/s/AKfycbw_p9PbNEfBxTCw2LamJ8aBxI9Y7-QUMCeNUAhrU3h0qu3CoUAqWGug3I4jORIzSY0U/exec";
     const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbwFpn8Pe0qu1YgibZzlbsOwB0ijK078Z2aWaykB0bn5LJzWdmrjW3xbuyVTz16qTJMqlA/exec";
@@ -973,7 +1099,11 @@
     }
 
     scannerTab.addEventListener("click", () => switchView("scanner"));
-    adminTab.addEventListener("click", () => switchView("admin"));
+    adminTab.addEventListener("click", () => {
+      switchView("admin");
+      renderCachedAdminDashboard(sectionFilter.value);
+      if (pinInput.value.trim()) loadDashboard();
+    });
 
     const startButton = document.getElementById("startButton");
     const manualButton = document.getElementById("manualButton");
@@ -981,6 +1111,7 @@
     const pointsInput = document.getElementById("points");
     const scannerResult = document.getElementById("scannerResult");
     const syncPendingButton = document.getElementById("syncPendingButton");
+    const clearReviewButton = document.getElementById("clearReviewButton");
     const recentPanel = document.getElementById("recentPanel");
     const recentList = document.getElementById("recentList");
     const quickPointButtons = Array.from(document.querySelectorAll(".quick-point"));
@@ -996,6 +1127,7 @@
     const PENDING_SCANS_KEY = "recitationPendingScansV1";
     const REVIEW_SCANS_KEY = "recitationReviewScansV1";
     const STUDENT_CACHE_KEY = "recitationStudentCacheV1";
+    const ADMIN_DASHBOARD_CACHE_PREFIX = "recitationAdminDashboardCacheV1::";
     const BATCH_SYNC_SIZE = 5;
 
     let scanPauseActive = false;
@@ -1139,6 +1271,11 @@
       localStorage.setItem(REVIEW_SCANS_KEY, JSON.stringify(scans));
     }
 
+    function clearReviewScans() {
+      localStorage.removeItem(REVIEW_SCANS_KEY);
+      updateSyncPendingButton();
+    }
+
     function moveScansToReview(scans, reason) {
       if (!scans.length) return;
 
@@ -1183,6 +1320,7 @@
     function updateSyncPendingButton() {
       const reviewCount = loadReviewScans().length;
       syncPendingButton.style.display = scanQueue.length > 0 || reviewCount > 0 ? "block" : "none";
+      clearReviewButton.style.display = reviewCount > 0 ? "block" : "none";
       syncPendingButton.innerText = scanQueue.length > 0
         ? "Sync Pending Now (" + scanQueue.length + ")"
         : reviewCount > 0
@@ -1235,6 +1373,46 @@
         count: Object.keys(studentMap).length,
         updatedAt: Date.now()
       });
+    }
+
+    function getAdminDashboardCacheKey(section) {
+      return ADMIN_DASHBOARD_CACHE_PREFIX + String(section || "all");
+    }
+
+    function loadAdminDashboardCache(section) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(getAdminDashboardCacheKey(section)) || "null");
+        if (!stored || !Array.isArray(stored.students)) return null;
+        return stored;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function saveAdminDashboardCache(section, data) {
+      if (!data || !Array.isArray(data.students)) return;
+
+      try {
+        localStorage.setItem(getAdminDashboardCacheKey(section), JSON.stringify({
+          sections: Array.isArray(data.sections) ? data.sections : [],
+          students: data.students,
+          savedAt: Date.now()
+        }));
+      } catch (error) {
+        // Local cache is only a speed boost; backend remains the source of truth.
+      }
+    }
+
+    function renderCachedAdminDashboard(section) {
+      const cached = loadAdminDashboardCache(section);
+      if (!cached) return false;
+
+      renderSections(cached.sections || []);
+      currentAdminStudents = cached.students || [];
+      cacheStudentsLocally(currentAdminStudents);
+      refreshAdminStudentsView();
+      showResult(adminResult, "loading", "Showing saved admin data. Refreshing online...");
+      return true;
     }
 
     function getCachedStudent(studentId) {
@@ -1687,12 +1865,17 @@
     const adminSummary = document.getElementById("adminSummary");
     const studentList = document.getElementById("studentList");
     const adminResult = document.getElementById("adminResult");
+    const openStudentModalButton = document.getElementById("openStudentModalButton");
+    const studentModal = document.getElementById("studentModal");
+    const studentModalTitle = document.getElementById("studentModalTitle");
+    const closeStudentModalButton = document.getElementById("closeStudentModalButton");
     let currentAdminStudents = [];
 
     function setAdminBusy(isBusy) {
       addButton.disabled = isBusy;
       editButton.disabled = isBusy;
       refreshButton.disabled = isBusy;
+      openStudentModalButton.disabled = isBusy;
     }
 
     function getPin() {
@@ -1702,6 +1885,38 @@
         pinInput.focus();
       }
       return pin;
+    }
+
+    function openStudentModal(mode, student) {
+      const isEdit = mode === "edit";
+      studentModalTitle.innerText = isEdit ? "Edit Student" : "Add Student";
+      addButton.style.display = isEdit ? "none" : "block";
+      editButton.style.display = isEdit ? "block" : "none";
+      adminStudentId.disabled = isEdit;
+
+      if (isEdit && student) {
+        adminStudentId.value = student.studentId || "";
+        adminFullName.value = student.fullName || "";
+        adminSection.value = student.section || "";
+      } else {
+        adminStudentId.value = "";
+        adminFullName.value = "";
+        adminSection.value = sectionFilter.value || "";
+      }
+
+      studentModal.classList.add("active");
+      studentModal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+      setTimeout(() => {
+        (isEdit ? adminFullName : adminStudentId).focus();
+      }, 50);
+    }
+
+    function closeStudentModal() {
+      studentModal.classList.remove("active");
+      studentModal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("modal-open");
+      adminStudentId.disabled = false;
     }
 
     async function runAdminAction(params) {
@@ -1841,6 +2056,8 @@
         return;
       }
 
+      const fragment = document.createDocumentFragment();
+
       students.forEach((student) => {
         const card = document.createElement("div");
         const details = document.createElement("div");
@@ -1849,6 +2066,8 @@
         const points = document.createElement("div");
 
         card.className = "student-card";
+        card.setAttribute("role", "button");
+        card.tabIndex = 0;
         name.className = "student-name";
         meta.className = "student-meta";
         points.className = "points";
@@ -1863,26 +2082,38 @@
         card.appendChild(points);
 
         card.addEventListener("click", () => {
-          adminStudentId.value = student.studentId;
-          adminFullName.value = student.fullName;
-          adminSection.value = student.section;
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          openStudentModal("edit", student);
+        });
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openStudentModal("edit", student);
+          }
         });
 
-        studentList.appendChild(card);
+        fragment.appendChild(card);
       });
+
+      studentList.appendChild(fragment);
     }
 
     async function loadDashboard() {
+      const selectedSection = sectionFilter.value;
+      renderCachedAdminDashboard(selectedSection);
+
       const data = await runAdminAction({
         action: "loadDashboard",
-        section: sectionFilter.value
+        section: selectedSection
       });
 
       if (!data || data.status !== "success") return;
       renderSections(data.sections || []);
       currentAdminStudents = data.students || [];
       cacheStudentsLocally(currentAdminStudents);
+      saveAdminDashboardCache(selectedSection, {
+        sections: data.sections || [],
+        students: currentAdminStudents
+      });
       refreshAdminStudentsView();
     }
 
@@ -1895,17 +2126,30 @@
       });
 
       if (data && data.status === "success") {
-        adminFullName.value = "";
-        adminSection.value = "";
+        closeStudentModal();
         if (data.sections && data.students) {
           renderSections(data.sections);
           currentAdminStudents = data.students;
           cacheStudentsLocally(currentAdminStudents);
+          saveAdminDashboardCache(sectionFilter.value, {
+            sections: data.sections,
+            students: currentAdminStudents
+          });
           refreshAdminStudentsView();
         }
       }
     }
 
+    openStudentModalButton.addEventListener("click", () => openStudentModal("add"));
+    closeStudentModalButton.addEventListener("click", closeStudentModal);
+    studentModal.addEventListener("click", (event) => {
+      if (event.target === studentModal) closeStudentModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && studentModal.classList.contains("active")) {
+        closeStudentModal();
+      }
+    });
     addButton.addEventListener("click", () => saveStudent("addStudent"));
     editButton.addEventListener("click", () => saveStudent("editStudent"));
     refreshButton.addEventListener("click", loadDashboard);
@@ -1919,6 +2163,16 @@
       }
 
       processScanQueue(true);
+    });
+    clearReviewButton.addEventListener("click", () => {
+      const reviewCount = loadReviewScans().length;
+      if (!reviewCount) return;
+
+      const shouldClear = confirm("Clear " + reviewCount + " Needs Review scan(s)? This will not delete pending scans.");
+      if (!shouldClear) return;
+
+      clearReviewScans();
+      showResult(scannerResult, "success", "Needs Review cleared. Pending syncs were not deleted.");
     });
     window.addEventListener("online", () => {
       refreshStudentCacheFromBackend();

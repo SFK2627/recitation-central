@@ -1,4 +1,4 @@
-const CACHE_NAME = "recitation-offline-v5-safe-review-sync";
+const CACHE_NAME = "recitation-offline-v7-admin-modal-fast";
 const APP_SHELL = [
   "./",
   "./index.html",

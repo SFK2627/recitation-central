@@ -1009,13 +1009,14 @@
     const SCANNER_PAUSE_MS = 750;
     const REQUEST_TIMEOUT_MS = 18000;
     const SCANNER_REQUEST_TIMEOUT_MS = 30000;
+    const PENDING_SCANS_KEY = "recitationPendingScansV1";
 
     let scanPauseActive = false;
     let queueProcessing = false;
     let scannerStarted = false;
     let audioContext = null;
     const recentScans = [];
-    const scanQueue = [];
+    let scanQueue = loadPendingScans();
     const recentScanLocks = new Map();
     const duplicateNoticeLocks = new Map();
 
@@ -1122,6 +1123,24 @@
       });
     }
 
+    function loadPendingScans() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(PENDING_SCANS_KEY) || "[]");
+        return Array.isArray(stored) ? stored : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function savePendingScans() {
+      localStorage.setItem(PENDING_SCANS_KEY, JSON.stringify(scanQueue));
+    }
+
+    function getPendingText() {
+      const count = scanQueue.length;
+      return count + " pending sync" + (count === 1 ? "" : "s");
+    }
+
     function normalizeStudentId(studentIdValue) {
       return String(studentIdValue || "").trim();
     }
@@ -1210,40 +1229,71 @@
       recentScanLocks.set(key, Date.now() + SCAN_COOLDOWN_MS);
 
       return {
+        id: "scan_" + Date.now() + "_" + Math.floor(Math.random() * 100000),
         key,
         studentId,
         activity,
         points,
+        attempts: 0,
         createdAt: Date.now()
       };
     }
 
     function enqueueScan(scanItem) {
       scanQueue.push(scanItem);
+      savePendingScans();
       showResult(
         scannerResult,
         "queued",
-        "Queued: " + scanItem.studentId + " (+" + scanItem.points + ")\nYou may scan the next student."
+        "Saved on this device: " + scanItem.studentId + " (+" + scanItem.points + ")\n" +
+          getPendingText() + ". You may scan the next student."
       );
+      vibrate(35);
       processScanQueue();
     }
 
     async function processScanQueue() {
       if (queueProcessing) return;
+      if (!navigator.onLine) {
+        showResult(scannerResult, "queued", "Offline mode active.\n" + getPendingText() + ".");
+        return;
+      }
+
       queueProcessing = true;
 
       while (scanQueue.length > 0) {
-        const scanItem = scanQueue.shift();
+        if (!navigator.onLine) break;
+
+        const scanItem = scanQueue[0];
+        scanItem.attempts = Number(scanItem.attempts || 0) + 1;
+        savePendingScans();
+
         showResult(
           scannerResult,
           "scanning",
-          "Saving: " + scanItem.studentId + " (+" + scanItem.points + ")\nQueue left: " + scanQueue.length
+          "Syncing: " + scanItem.studentId + " (+" + scanItem.points + ")\n" + getPendingText()
         );
 
-        await sendScanToBackend(scanItem);
+        const canRemove = await sendScanToBackend(scanItem);
+
+        if (!canRemove) {
+          showResult(
+            scannerResult,
+            "queued",
+            "Kept offline for retry: " + scanItem.studentId + "\n" + getPendingText()
+          );
+          break;
+        }
+
+        scanQueue.shift();
+        savePendingScans();
       }
 
       queueProcessing = false;
+
+      if (scanQueue.length === 0) {
+        showResult(scannerResult, "success", "All pending scans are synced.");
+      }
     }
 
     async function sendScanToBackend(scanItem) {
@@ -1251,7 +1301,8 @@
         const data = await callJsonp(SCANNER_API_URL, {
           qrText: scanItem.studentId,
           activity: scanItem.activity,
-          points: String(scanItem.points)
+          points: String(scanItem.points),
+          requestId: scanItem.id
         }, "scannerCallback_", SCANNER_REQUEST_TIMEOUT_MS);
 
         const resultType = data.status === "success"
@@ -1265,16 +1316,23 @@
         if (data.status === "success") {
           playSuccessFeedback();
           addRecentScan(data.message);
+          return true;
         } else if (data.status === "duplicate") {
           addRecentScan(data.message);
+          return true;
         } else {
           recentScanLocks.delete(scanItem.key);
           playErrorFeedback();
+          addRecentScan(data.message || "Scan was rejected by backend.");
+          return true;
         }
       } catch (error) {
-        showResult(scannerResult, "error", "System Error: " + error.message);
-        recentScanLocks.delete(scanItem.key);
-        playErrorFeedback();
+        showResult(
+          scannerResult,
+          "queued",
+          "No backend connection yet.\n" + scanItem.studentId + " stays pending and will retry."
+        );
+        return false;
       }
     }
 
@@ -1579,12 +1637,23 @@
     sectionFilter.addEventListener("change", loadDashboard);
     adminSort.addEventListener("change", refreshAdminStudentsView);
     adminSearch.addEventListener("input", refreshAdminStudentsView);
+    window.addEventListener("online", processScanQueue);
+    window.addEventListener("focus", processScanQueue);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) processScanQueue();
+    });
 
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
+    window.addEventListener("load", () => {
+      if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("service-worker.js");
-      });
-    }
+      }
+
+      if (scanQueue.length > 0) {
+        showResult(scannerResult, "queued", "Loaded " + getPendingText() + " from this device.");
+      }
+
+      processScanQueue();
+    });
   </script>
 </body>
 </html>

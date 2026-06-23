@@ -1,4 +1,4 @@
-const CACHE_NAME = "recitation-offline-v7-admin-modal-fast";
+const CACHE_NAME = "recitation-offline-v8-auto-activity";
 const APP_SHELL = [
   "./",
   "./index.html",

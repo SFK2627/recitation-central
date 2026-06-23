@@ -509,6 +509,10 @@
       gap: 10px;
     }
 
+    .field-grid.points-only {
+      grid-template-columns: 1fr;
+    }
+
     .field {
       min-width: 0;
     }
@@ -977,11 +981,8 @@
       <div id="scannerView" class="view active">
         <div class="panel scan-panel">
           <p class="panel-title">Scan Settings</p>
-          <div class="field-grid">
-            <div class="field">
-              <label for="activity">Activity</label>
-              <input type="text" id="activity" value="Recitation" placeholder="Activity Name">
-            </div>
+          <div class="field-grid points-only">
+            <input type="hidden" id="activity" value="">
             <div class="field">
               <label for="points">Points</label>
               <input type="number" id="points" value="1" min="1" placeholder="Points to award">
@@ -1108,6 +1109,7 @@
     const startButton = document.getElementById("startButton");
     const manualButton = document.getElementById("manualButton");
     const manualStudentId = document.getElementById("manualStudentId");
+    const activityInput = document.getElementById("activity");
     const pointsInput = document.getElementById("points");
     const scannerResult = document.getElementById("scannerResult");
     const syncPendingButton = document.getElementById("syncPendingButton");
@@ -1447,6 +1449,21 @@
       return String(studentIdValue || "").trim();
     }
 
+    function getDefaultActivityName() {
+      const todayText = new Intl.DateTimeFormat("en-PH", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit"
+      }).format(new Date());
+
+      return "Recitation - " + todayText;
+    }
+
+    function syncDefaultActivityName() {
+      activityInput.value = getDefaultActivityName();
+      return activityInput.value;
+    }
+
     function buildScanKey(studentId, activity, points) {
       return [
         studentId.toUpperCase(),
@@ -1502,7 +1519,7 @@
 
     function prepareScan(studentIdValue) {
       const studentId = String(studentIdValue || "").trim();
-      const activity = document.getElementById("activity").value.trim();
+      const activity = syncDefaultActivityName();
       const points = Number(pointsInput.value);
 
       if (!studentId) {
@@ -1529,11 +1546,6 @@
           "Unknown Student ID while offline: " + studentId + "\nScan was not accepted."
         );
         playErrorFeedback();
-        return null;
-      }
-
-      if (!activity) {
-        showResult(scannerResult, "error", "Please enter an activity name.");
         return null;
       }
 
@@ -2189,6 +2201,8 @@
           registration.update();
         });
       }
+
+      syncDefaultActivityName();
 
       if (scanQueue.length > 0) {
         showResult(scannerResult, "queued", "Loaded " + getPendingText() + " from this device.");

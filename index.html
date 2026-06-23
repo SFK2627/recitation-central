@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#1f6feb">
+  <meta name="theme-color" content="#111827">
   <title>JR Recitation App</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
@@ -211,6 +212,12 @@
       border: 1px solid #d6d8db;
     }
 
+    .queued {
+      background: #fff3cd;
+      color: #664d03;
+      border: 1px solid #ffecb5;
+    }
+
     .recent-panel {
       margin-top: 16px;
       text-align: left;
@@ -314,12 +321,558 @@
         width: 100%;
       }
     }
+
+    :root {
+      --yellow: #ffd43b;
+      --yellow-soft: #fff3bf;
+      --gold: #f59e0b;
+      --black: #111827;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: rgba(15, 23, 42, 0.10);
+      --card: rgba(255, 255, 255, 0.94);
+      --green: #16a34a;
+      --red: #dc2626;
+      --shadow: 0 18px 46px rgba(15, 23, 42, 0.13);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 212, 59, 0.46), transparent 34%),
+        radial-gradient(circle at 85% 12%, rgba(245, 158, 11, 0.22), transparent 28%),
+        linear-gradient(135deg, #fff7d6 0%, #f8fafc 45%, #ffffff 100%);
+      text-align: left;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(17, 24, 39, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(17, 24, 39, 0.035) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent 76%);
+    }
+
+    .app {
+      position: relative;
+      width: min(940px, 100%);
+      max-width: none;
+      margin: 0 auto;
+      padding: 12px;
+      background: transparent;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 10px;
+      z-index: 20;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 8px;
+      padding: 16px;
+      background: linear-gradient(135deg, #111827 0%, #1f2937 52%, #0f172a 100%);
+      color: white;
+      box-shadow: var(--shadow);
+    }
+
+    .topbar::after {
+      content: "+1";
+      position: absolute;
+      right: 18px;
+      top: 10px;
+      color: rgba(255, 212, 59, 0.10);
+      font-size: 96px;
+      font-weight: 950;
+      line-height: 1;
+      transform: rotate(-8deg);
+      pointer-events: none;
+    }
+
+    .brand-row {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      width: auto;
+      margin: 0 0 8px;
+      border: 1px solid rgba(255, 212, 59, 0.35);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--yellow);
+      background: rgba(255, 212, 59, 0.10);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(25px, 7vw, 44px);
+      line-height: 0.98;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      max-width: 520px;
+      margin: 7px 0 0;
+      color: rgba(255, 255, 255, 0.74);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .hero-chip {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      width: 72px;
+      height: 72px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--yellow);
+      font-size: 26px;
+      font-weight: 950;
+      box-shadow: inset 0 0 0 1px rgba(255, 212, 59, 0.08);
+    }
+
+    .tabs {
+      position: relative;
+      z-index: 1;
+      margin-top: 14px;
+      padding: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      gap: 4px;
+    }
+
+    .tab-button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .tab-button.active {
+      background: var(--yellow);
+      color: var(--black);
+      box-shadow: 0 10px 20px rgba(255, 212, 59, 0.18);
+    }
+
+    .content {
+      padding: 14px 0 24px;
+    }
+
+    .panel {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--card);
+      box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(12px);
+    }
+
+    .panel:first-child {
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 12px;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .panel-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(120px, 0.7fr);
+      gap: 10px;
+    }
+
+    .field {
+      min-width: 0;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 6px;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    input,
+    select,
+    button {
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    input,
+    select {
+      min-height: 50px;
+      margin-bottom: 0;
+      border: 1px solid #cbd5e1;
+      padding: 12px 13px;
+      background: white;
+      color: var(--ink);
+      outline: none;
+      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.16);
+    }
+
+    button {
+      min-height: 50px;
+      border: 0;
+      background: var(--black);
+      color: white;
+      font-weight: 950;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button.secondary {
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--black);
+    }
+
+    .quick-points {
+      margin: 10px 0 12px;
+      gap: 7px;
+    }
+
+    .quick-points button {
+      min-height: 48px;
+      border: 1px solid rgba(245, 158, 11, 0.26);
+      border-radius: 8px;
+      background: #fff7d6;
+      color: #92400e;
+      font-size: 16px;
+      font-weight: 950;
+    }
+
+    .quick-points button.active {
+      border-color: var(--yellow);
+      background: var(--yellow);
+      color: var(--black);
+      box-shadow: 0 10px 22px rgba(245, 158, 11, 0.20);
+    }
+
+    .manual-row,
+    .filter-row,
+    .actions {
+      gap: 10px;
+    }
+
+    .filter-row {
+      grid-template-columns: minmax(0, 1fr) minmax(160px, 0.75fr) auto;
+      align-items: end;
+    }
+
+    .manual-row {
+      grid-template-columns: minmax(0, 1fr) 118px;
+    }
+
+    .manual-row button,
+    .filter-row button {
+      width: auto;
+    }
+
+    #manualButton,
+    #addButton {
+      background: linear-gradient(135deg, #111827, #334155);
+    }
+
+    #startButton {
+      min-height: 56px;
+      margin-top: 12px;
+      border: 1px solid rgba(255, 212, 59, 0.55);
+      background: linear-gradient(135deg, #ffd43b, #f59e0b);
+      color: #111827;
+      box-shadow: 0 14px 26px rgba(245, 158, 11, 0.24);
+    }
+
+    #reader {
+      min-height: 0;
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0f172a;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    #reader video {
+      border-radius: 8px;
+    }
+
+    .result {
+      margin-top: 12px;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 15px;
+      line-height: 1.35;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+    }
+
+    .success {
+      background: #dcfce7;
+      color: #14532d;
+      border: 1px solid #86efac;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #7f1d1d;
+      border: 1px solid #fecaca;
+    }
+
+    .loading,
+    .scanning {
+      background: #e0f2fe;
+      color: #075985;
+      border: 1px solid #bae6fd;
+    }
+
+    .queued {
+      background: #fef3c7;
+      color: #78350f;
+      border: 1px solid #fde68a;
+    }
+
+    .recent-panel {
+      margin-top: 14px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    .recent-panel h3 {
+      margin: 0 0 9px;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .recent-list,
+    .student-list {
+      gap: 9px;
+      padding-bottom: 10px;
+    }
+
+    .recent-item,
+    .student-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: #ffffff;
+      color: #334155;
+      box-shadow: 0 7px 18px rgba(15, 23, 42, 0.05);
+    }
+
+    .student-card {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .student-card:active {
+      background: #fff7d6;
+      transform: scale(0.995);
+    }
+
+    .student-name {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 950;
+    }
+
+    .student-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .points {
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: #dcfce7;
+      color: #166534;
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .empty {
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--muted);
+    }
+
+    .admin-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .admin-form-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+      gap: 10px;
+    }
+
+    .admin-form-grid .wide {
+      grid-column: 1 / -1;
+    }
+
+    .admin-summary {
+      display: none;
+      margin: 10px 0 0;
+      border: 1px solid rgba(245, 158, 11, 0.22);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fff7d6;
+      color: #78350f;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 680px) {
+      .app {
+        padding: 10px;
+      }
+
+      .topbar {
+        top: 8px;
+        padding: 14px;
+      }
+
+      .brand-row {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-chip {
+        display: none;
+      }
+
+      .subtitle {
+        font-size: 12px;
+      }
+
+      .content {
+        padding-top: 10px;
+      }
+
+      .panel {
+        padding: 12px;
+      }
+
+      .field-grid,
+      .manual-row,
+      .filter-row,
+      .actions,
+      .admin-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .manual-row button,
+      .filter-row button {
+        width: 100%;
+      }
+
+      .quick-points {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .student-card {
+        grid-template-columns: 1fr auto;
+      }
+
+      .points {
+        text-align: right;
+      }
+    }
+
+    @media (max-width: 390px) {
+      h1 {
+        font-size: 25px;
+      }
+
+      .quick-points button {
+        min-height: 44px;
+        padding: 8px 4px;
+      }
+
+      input,
+      select,
+      button {
+        font-size: 15px;
+      }
+    }
   </style>
 </head>
 <body>
   <main class="app">
     <header class="topbar">
-      <h1>JR Recitation App</h1>
+      <div class="brand-row">
+        <div>
+          <p class="eyebrow">Recitation Central</p>
+          <h1>Fast Scanner</h1>
+          <p class="subtitle">Queue scans quickly, prevent duplicate logs, and manage students in one reliable mobile view.</p>
+        </div>
+        <div class="hero-chip">+1</div>
+      </div>
       <div class="tabs">
         <button id="scannerTab" class="tab-button active" type="button">Scanner</button>
         <button id="adminTab" class="tab-button" type="button">Admin</button>
@@ -328,9 +881,18 @@
 
     <section class="content">
       <div id="scannerView" class="view active">
-        <div class="panel">
-          <input type="text" id="activity" value="Recitation" placeholder="Activity Name">
-          <input type="number" id="points" value="1" min="1" placeholder="Points to award">
+        <div class="panel scan-panel">
+          <p class="panel-title">Scan Settings</p>
+          <div class="field-grid">
+            <div class="field">
+              <label for="activity">Activity</label>
+              <input type="text" id="activity" value="Recitation" placeholder="Activity Name">
+            </div>
+            <div class="field">
+              <label for="points">Points</label>
+              <input type="number" id="points" value="1" min="1" placeholder="Points to award">
+            </div>
+          </div>
           <div class="quick-points">
             <button class="quick-point active" type="button" data-points="1">+1</button>
             <button class="quick-point" type="button" data-points="2">+2</button>
@@ -338,7 +900,7 @@
             <button class="quick-point" type="button" data-points="5">+5</button>
           </div>
           <div class="manual-row">
-            <input type="text" id="manualStudentId" placeholder="Type Student ID">
+            <input type="text" id="manualStudentId" placeholder="Type Student ID manually">
             <button id="manualButton" type="button">Record</button>
           </div>
           <button id="startButton" type="button">Start Camera Scanner</button>
@@ -353,15 +915,27 @@
 
       <div id="adminView" class="view">
         <div class="panel">
+          <p class="panel-title">Teacher Access</p>
           <input type="password" id="pin" placeholder="Teacher PIN">
         </div>
 
         <div class="panel">
           <p class="panel-title">Add / Edit Student</p>
-          <input type="text" id="adminStudentId" placeholder="Student ID">
-          <input type="text" id="adminFullName" placeholder="Full Name">
-          <input type="text" id="adminSection" list="sectionOptions" placeholder="Section">
-          <datalist id="sectionOptions"></datalist>
+          <div class="admin-form-grid">
+            <div class="field">
+              <label for="adminStudentId">Student ID</label>
+              <input type="text" id="adminStudentId" placeholder="Student ID">
+            </div>
+            <div class="field">
+              <label for="adminFullName">Full Name</label>
+              <input type="text" id="adminFullName" placeholder="Full Name">
+            </div>
+            <div class="field wide">
+              <label for="adminSection">Section</label>
+              <input type="text" id="adminSection" list="sectionOptions" placeholder="Section">
+              <datalist id="sectionOptions"></datalist>
+            </div>
+          </div>
           <div class="actions">
             <button id="addButton" type="button">Add Student</button>
             <button id="editButton" class="secondary" type="button">Save Edit</button>
@@ -373,11 +947,25 @@
         <div class="panel">
           <p class="panel-title">Students</p>
           <div class="filter-row">
-            <select id="sectionFilter">
-              <option value="">All sections</option>
-            </select>
+            <div class="field">
+              <label for="sectionFilter">Section Filter</label>
+              <select id="sectionFilter">
+                <option value="">All sections</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="adminSort">Sort</label>
+              <select id="adminSort">
+                <option value="mostPoints">Most Points</option>
+                <option value="latest">Latest Recitation</option>
+                <option value="az">Name A-Z</option>
+                <option value="lowestPoints">Lowest Points</option>
+              </select>
+            </div>
             <button id="refreshButton" class="secondary" type="button">Refresh</button>
           </div>
+          <input type="search" id="adminSearch" placeholder="Search student name or ID">
+          <div id="adminSummary" class="admin-summary"></div>
           <div id="studentList" class="student-list"></div>
         </div>
       </div>
@@ -417,10 +1005,18 @@
       verbose: false
     });
 
-    let isProcessing = false;
+    const SCAN_COOLDOWN_MS = 6000;
+    const SCANNER_PAUSE_MS = 750;
+    const REQUEST_TIMEOUT_MS = 10000;
+
+    let scanPauseActive = false;
+    let queueProcessing = false;
     let scannerStarted = false;
     let audioContext = null;
     const recentScans = [];
+    const scanQueue = [];
+    const recentScanLocks = new Map();
+    const duplicateNoticeLocks = new Map();
 
     function showResult(target, type, message) {
       target.style.display = "block";
@@ -481,7 +1077,7 @@
         const timeoutId = setTimeout(() => {
           cleanup();
           reject(new Error("Backend request timed out."));
-        }, 10000);
+        }, REQUEST_TIMEOUT_MS);
 
         function cleanup() {
           clearTimeout(timeoutId);
@@ -525,63 +1121,163 @@
       });
     }
 
-    function releaseScannerProcessing() {
-      isProcessing = false;
-      manualButton.disabled = false;
-      if (scannerStarted) scanner.resume();
+    function normalizeStudentId(studentIdValue) {
+      return String(studentIdValue || "").trim();
     }
 
-    async function sendStudentId(studentIdValue) {
+    function buildScanKey(studentId, activity, points) {
+      return [
+        studentId.toUpperCase(),
+        activity.toUpperCase(),
+        String(points)
+      ].join("|");
+    }
+
+    function cleanupScanLocks() {
+      const now = Date.now();
+      recentScanLocks.forEach((expiresAt, key) => {
+        if (expiresAt <= now) recentScanLocks.delete(key);
+      });
+      duplicateNoticeLocks.forEach((expiresAt, key) => {
+        if (expiresAt <= now) duplicateNoticeLocks.delete(key);
+      });
+    }
+
+    function showDuplicateNotice(key, studentId) {
+      cleanupScanLocks();
+      if (duplicateNoticeLocks.has(key)) return;
+
+      duplicateNoticeLocks.set(key, Date.now() + 1200);
+      showResult(
+        scannerResult,
+        "queued",
+        "Duplicate scan ignored for " + studentId + ".\nMove to the next student."
+      );
+    }
+
+    function pauseScannerBriefly() {
+      if (!scannerStarted || scanPauseActive) return;
+
+      scanPauseActive = true;
+
+      try {
+        scanner.pause(true);
+      } catch (error) {
+        // Scanner may already be paused while the camera warms up.
+      }
+
+      setTimeout(() => {
+        scanPauseActive = false;
+        if (!scannerStarted) return;
+
+        try {
+          scanner.resume();
+        } catch (error) {
+          // Scanner may already be running.
+        }
+      }, SCANNER_PAUSE_MS);
+    }
+
+    function prepareScan(studentIdValue) {
       const studentId = String(studentIdValue || "").trim();
       const activity = document.getElementById("activity").value.trim();
       const points = Number(pointsInput.value);
 
       if (!studentId) {
         showResult(scannerResult, "error", "Please enter or scan a Student ID.");
-        releaseScannerProcessing();
-        return;
+        return null;
       }
 
       if (!activity) {
         showResult(scannerResult, "error", "Please enter an activity name.");
-        releaseScannerProcessing();
-        return;
+        return null;
       }
 
       if (!Number.isFinite(points) || points <= 0) {
         showResult(scannerResult, "error", "Please enter valid points.");
-        releaseScannerProcessing();
-        return;
+        return null;
       }
 
-      showResult(scannerResult, "scanning", "Processing Student ID...");
+      cleanupScanLocks();
 
+      const key = buildScanKey(studentId, activity, points);
+      if (recentScanLocks.has(key)) {
+        showDuplicateNotice(key, studentId);
+        return null;
+      }
+
+      recentScanLocks.set(key, Date.now() + SCAN_COOLDOWN_MS);
+
+      return {
+        key,
+        studentId,
+        activity,
+        points,
+        createdAt: Date.now()
+      };
+    }
+
+    function enqueueScan(scanItem) {
+      scanQueue.push(scanItem);
+      showResult(
+        scannerResult,
+        "queued",
+        "Queued: " + scanItem.studentId + " (+" + scanItem.points + ")\nYou may scan the next student."
+      );
+      processScanQueue();
+    }
+
+    async function processScanQueue() {
+      if (queueProcessing) return;
+      queueProcessing = true;
+
+      while (scanQueue.length > 0) {
+        const scanItem = scanQueue.shift();
+        showResult(
+          scannerResult,
+          "scanning",
+          "Saving: " + scanItem.studentId + " (+" + scanItem.points + ")\nQueue left: " + scanQueue.length
+        );
+
+        await sendScanToBackend(scanItem);
+      }
+
+      queueProcessing = false;
+    }
+
+    async function sendScanToBackend(scanItem) {
       try {
         const data = await callJsonp(SCANNER_API_URL, {
-          qrText: studentId,
-          activity,
-          points: String(points)
+          qrText: scanItem.studentId,
+          activity: scanItem.activity,
+          points: String(scanItem.points)
         }, "scannerCallback_");
 
-        showResult(scannerResult, data.status === "success" ? "success" : "error", data.message);
+        const resultType = data.status === "success"
+          ? "success"
+          : data.status === "duplicate"
+            ? "queued"
+            : "error";
+
+        showResult(scannerResult, resultType, data.message);
 
         if (data.status === "success") {
           playSuccessFeedback();
           addRecentScan(data.message);
+        } else if (data.status === "duplicate") {
+          addRecentScan(data.message);
         } else {
+          recentScanLocks.delete(scanItem.key);
           playErrorFeedback();
         }
-
-        setTimeout(releaseScannerProcessing, 1200);
       } catch (error) {
         showResult(scannerResult, "error", "System Error: " + error.message);
+        recentScanLocks.delete(scanItem.key);
         playErrorFeedback();
-        releaseScannerProcessing();
       }
     }
 
     function recordManualStudentId() {
-      if (isProcessing) return;
       unlockFeedback();
 
       const studentId = manualStudentId.value.trim();
@@ -591,11 +1287,16 @@
         return;
       }
 
-      isProcessing = true;
+      const scanItem = prepareScan(studentId);
+      if (!scanItem) return;
+
       manualButton.disabled = true;
-      if (scannerStarted) scanner.pause(true);
       manualStudentId.value = "";
-      sendStudentId(studentId);
+      enqueueScan(scanItem);
+
+      setTimeout(() => {
+        manualButton.disabled = false;
+      }, 500);
     }
 
     async function startScanner() {
@@ -609,10 +1310,12 @@
           { facingMode: "environment" },
           { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1, disableFlip: true },
           (decodedText) => {
-            if (isProcessing) return;
-            isProcessing = true;
-            scanner.pause(true);
-            sendStudentId(decodedText);
+            if (scanPauseActive) return;
+
+            const scanItem = prepareScan(normalizeStudentId(decodedText));
+            pauseScannerBriefly();
+
+            if (scanItem) enqueueScan(scanItem);
           }
         );
 
@@ -647,8 +1350,12 @@
     const editButton = document.getElementById("editButton");
     const refreshButton = document.getElementById("refreshButton");
     const sectionFilter = document.getElementById("sectionFilter");
+    const adminSort = document.getElementById("adminSort");
+    const adminSearch = document.getElementById("adminSearch");
+    const adminSummary = document.getElementById("adminSummary");
     const studentList = document.getElementById("studentList");
     const adminResult = document.getElementById("adminResult");
+    let currentAdminStudents = [];
 
     function setAdminBusy(isBusy) {
       addButton.disabled = isBusy;
@@ -711,6 +1418,86 @@
       sectionFilter.value = currentValue;
     }
 
+    function getLatestValue(student) {
+      return Number(student.latestRecitationMillis || student.latestRecitationRow || 0);
+    }
+
+    function compareByName(a, b) {
+      return String(a.fullName || "").localeCompare(String(b.fullName || ""));
+    }
+
+    function getVisibleAdminStudents() {
+      const query = adminSearch.value.trim().toLowerCase();
+      const sortMode = adminSort.value;
+
+      let students = currentAdminStudents.slice();
+
+      if (query) {
+        students = students.filter((student) => {
+          const haystack = [
+            student.studentId,
+            student.fullName,
+            student.section
+          ].join(" ").toLowerCase();
+          return haystack.includes(query);
+        });
+      }
+
+      students.sort((a, b) => {
+        if (sortMode === "latest") {
+          return getLatestValue(b) - getLatestValue(a) || compareByName(a, b);
+        }
+
+        if (sortMode === "lowestPoints") {
+          return Number(a.totalPoints || 0) - Number(b.totalPoints || 0) ||
+            getLatestValue(b) - getLatestValue(a) ||
+            compareByName(a, b);
+        }
+
+        if (sortMode === "az") {
+          return compareByName(a, b);
+        }
+
+        return Number(b.totalPoints || 0) - Number(a.totalPoints || 0) ||
+          getLatestValue(b) - getLatestValue(a) ||
+          compareByName(a, b);
+      });
+
+      return students;
+    }
+
+    function renderAdminSummary(students) {
+      if (!students.length) {
+        adminSummary.style.display = "none";
+        adminSummary.innerText = "";
+        return;
+      }
+
+      const topStudent = students.reduce((top, student) => {
+        if (!top) return student;
+        return Number(student.totalPoints || 0) > Number(top.totalPoints || 0) ? student : top;
+      }, null);
+
+      const latestStudent = students
+        .slice()
+        .sort((a, b) => getLatestValue(b) - getLatestValue(a))[0];
+
+      const latestText = latestStudent && getLatestValue(latestStudent)
+        ? " | Latest: " + latestStudent.fullName
+        : "";
+
+      adminSummary.style.display = "block";
+      adminSummary.innerText = students.length + " student(s) shown | Top: " +
+        topStudent.fullName + " (" + Number(topStudent.totalPoints || 0) + " pts)" +
+        latestText;
+    }
+
+    function refreshAdminStudentsView() {
+      const students = getVisibleAdminStudents();
+      renderAdminSummary(students);
+      renderStudents(students);
+    }
+
     function renderStudents(students) {
       studentList.innerHTML = "";
 
@@ -734,7 +1521,8 @@
         meta.className = "student-meta";
         points.className = "points";
         name.innerText = student.fullName;
-        meta.innerText = student.studentId + " | " + student.section;
+        meta.innerText = student.studentId + " | " + student.section +
+          (student.latestRecitationText ? "\nLatest: " + student.latestRecitationText : "");
         points.innerText = student.totalPoints + " pts";
 
         details.appendChild(name);
@@ -761,7 +1549,8 @@
 
       if (!data || data.status !== "success") return;
       renderSections(data.sections || []);
-      renderStudents(data.students || []);
+      currentAdminStudents = data.students || [];
+      refreshAdminStudentsView();
     }
 
     async function saveStudent(action) {
@@ -777,7 +1566,8 @@
         adminSection.value = "";
         if (data.sections && data.students) {
           renderSections(data.sections);
-          renderStudents(data.students);
+          currentAdminStudents = data.students;
+          refreshAdminStudentsView();
         }
       }
     }
@@ -786,6 +1576,8 @@
     editButton.addEventListener("click", () => saveStudent("editStudent"));
     refreshButton.addEventListener("click", loadDashboard);
     sectionFilter.addEventListener("change", loadDashboard);
+    adminSort.addEventListener("change", refreshAdminStudentsView);
+    adminSearch.addEventListener("input", refreshAdminStudentsView);
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

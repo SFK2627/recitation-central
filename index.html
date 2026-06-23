@@ -788,6 +788,14 @@
       line-height: 1.35;
     }
 
+    .sync-button {
+      display: none;
+      margin-top: 10px;
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      background: #ffffff;
+      color: var(--black);
+    }
+
     @media (max-width: 680px) {
       .app {
         padding: 10px;
@@ -906,6 +914,7 @@
           <button id="startButton" type="button">Start Camera Scanner</button>
           <div id="reader"></div>
           <div id="scannerResult" class="result"></div>
+          <button id="syncPendingButton" class="sync-button" type="button">Sync Pending Now</button>
           <div id="recentPanel" class="recent-panel">
             <h3>Recent Scans</h3>
             <div id="recentList" class="recent-list"></div>
@@ -997,6 +1006,7 @@
     const manualStudentId = document.getElementById("manualStudentId");
     const pointsInput = document.getElementById("points");
     const scannerResult = document.getElementById("scannerResult");
+    const syncPendingButton = document.getElementById("syncPendingButton");
     const recentPanel = document.getElementById("recentPanel");
     const recentList = document.getElementById("recentList");
     const quickPointButtons = Array.from(document.querySelectorAll(".quick-point"));
@@ -1134,11 +1144,19 @@
 
     function savePendingScans() {
       localStorage.setItem(PENDING_SCANS_KEY, JSON.stringify(scanQueue));
+      updateSyncPendingButton();
     }
 
     function getPendingText() {
       const count = scanQueue.length;
       return count + " pending sync" + (count === 1 ? "" : "s");
+    }
+
+    function updateSyncPendingButton() {
+      syncPendingButton.style.display = scanQueue.length > 0 ? "block" : "none";
+      syncPendingButton.innerText = scanQueue.length > 0
+        ? "Sync Pending Now (" + scanQueue.length + ")"
+        : "Sync Pending Now";
     }
 
     function normalizeStudentId(studentIdValue) {
@@ -1255,7 +1273,7 @@
     async function processScanQueue() {
       if (queueProcessing) return;
       if (!navigator.onLine) {
-        showResult(scannerResult, "queued", "Offline mode active.\n" + getPendingText() + ".");
+        showResult(scannerResult, "queued", "No internet connection.\n" + getPendingText() + " saved on this device.");
         return;
       }
 
@@ -1280,7 +1298,8 @@
           showResult(
             scannerResult,
             "queued",
-            "Kept offline for retry: " + scanItem.studentId + "\n" + getPendingText()
+            "Backend sync delayed: " + scanItem.studentId + "\n" +
+              getPendingText() + " saved on this device."
           );
           break;
         }
@@ -1330,7 +1349,8 @@
         showResult(
           scannerResult,
           "queued",
-          "No backend connection yet.\n" + scanItem.studentId + " stays pending and will retry."
+          "Backend did not respond yet.\n" +
+            scanItem.studentId + " stays pending and will retry."
         );
         return false;
       }
@@ -1637,6 +1657,7 @@
     sectionFilter.addEventListener("change", loadDashboard);
     adminSort.addEventListener("change", refreshAdminStudentsView);
     adminSearch.addEventListener("input", refreshAdminStudentsView);
+    syncPendingButton.addEventListener("click", processScanQueue);
     window.addEventListener("online", processScanQueue);
     window.addEventListener("focus", processScanQueue);
     document.addEventListener("visibilitychange", () => {
@@ -1645,13 +1666,16 @@
 
     window.addEventListener("load", () => {
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("service-worker.js");
+        navigator.serviceWorker.register("service-worker.js").then((registration) => {
+          registration.update();
+        });
       }
 
       if (scanQueue.length > 0) {
         showResult(scannerResult, "queued", "Loaded " + getPendingText() + " from this device.");
       }
 
+      updateSyncPendingButton();
       processScanQueue();
     });
   </script>

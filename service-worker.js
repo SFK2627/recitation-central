@@ -1,4 +1,4 @@
-const CACHE_NAME = "recitation-offline-v1";
+const CACHE_NAME = "recitation-offline-v2-github-safe";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -32,8 +32,24 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
+  const url = new URL(request.url);
 
   if (request.method !== "GET") {
+    return;
+  }
+
+  if (
+    url.hostname === "script.google.com" ||
+    url.hostname === "script.googleusercontent.com" ||
+    url.hostname.endsWith(".google.com") ||
+    url.hostname.endsWith(".googleusercontent.com")
+  ) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (url.origin !== self.location.origin) {
+    event.respondWith(fetch(request).catch(() => caches.match(request)));
     return;
   }
 

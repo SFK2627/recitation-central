@@ -378,50 +378,40 @@
     }
 
     .topbar {
-      position: sticky;
-      top: 10px;
+      position: relative;
       z-index: 20;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.13);
       border-radius: 8px;
-      padding: 16px;
+      padding: 10px 12px 12px;
       background: linear-gradient(135deg, #111827 0%, #1f2937 52%, #0f172a 100%);
       color: white;
-      box-shadow: var(--shadow);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
     }
 
     .topbar::after {
-      content: "+1";
-      position: absolute;
-      right: 18px;
-      top: 10px;
-      color: rgba(255, 212, 59, 0.10);
-      font-size: 96px;
-      font-weight: 950;
-      line-height: 1;
-      transform: rotate(-8deg);
-      pointer-events: none;
+      content: none;
     }
 
     .brand-row {
       position: relative;
       z-index: 1;
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 14px;
+      grid-template-columns: 1fr;
+      gap: 6px;
       align-items: center;
     }
 
     .eyebrow {
       display: inline-flex;
       width: auto;
-      margin: 0 0 8px;
+      margin: 0 0 4px;
       border: 1px solid rgba(255, 212, 59, 0.35);
       border-radius: 999px;
-      padding: 6px 10px;
+      padding: 4px 8px;
       color: var(--yellow);
       background: rgba(255, 212, 59, 0.10);
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -429,40 +419,29 @@
 
     h1 {
       margin: 0;
-      font-size: clamp(25px, 7vw, 44px);
-      line-height: 0.98;
-      letter-spacing: -0.04em;
+      font-size: clamp(22px, 5.6vw, 32px);
+      line-height: 1;
+      letter-spacing: -0.03em;
     }
 
     .subtitle {
+      display: none;
       max-width: 520px;
-      margin: 7px 0 0;
+      margin: 5px 0 0;
       color: rgba(255, 255, 255, 0.74);
       font-size: 13px;
       line-height: 1.35;
     }
 
     .hero-chip {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      place-items: center;
-      width: 72px;
-      height: 72px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--yellow);
-      font-size: 26px;
-      font-weight: 950;
-      box-shadow: inset 0 0 0 1px rgba(255, 212, 59, 0.08);
+      display: none;
     }
 
     .tabs {
       position: relative;
       z-index: 1;
-      margin-top: 14px;
-      padding: 4px;
+      margin-top: 9px;
+      padding: 3px;
       border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.08);
@@ -470,7 +449,7 @@
     }
 
     .tab-button {
-      min-height: 42px;
+      min-height: 38px;
       border: 0;
       border-radius: 6px;
       background: transparent;
@@ -486,11 +465,11 @@
     }
 
     .content {
-      padding: 14px 0 24px;
+      padding: 8px 0 24px;
     }
 
     .panel {
-      margin-top: 12px;
+      margin-top: 8px;
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 14px;
@@ -802,8 +781,7 @@
       }
 
       .topbar {
-        top: 8px;
-        padding: 14px;
+        padding: 9px 10px 10px;
       }
 
       .brand-row {
@@ -814,12 +792,8 @@
         display: none;
       }
 
-      .subtitle {
-        font-size: 12px;
-      }
-
       .content {
-        padding-top: 10px;
+        padding-top: 8px;
       }
 
       .panel {

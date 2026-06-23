@@ -1430,7 +1430,7 @@
 
       try {
         const data = await callJsonp(ADMIN_API_URL, {
-          action: "publicLeaderboard",
+          action: "publicStudentCache",
           section: ""
         }, "studentCacheCallback_", REQUEST_TIMEOUT_MS);
 
@@ -1591,7 +1591,7 @@
       );
       playSuccessFeedback();
       addRecentScan("Pending sync: " + displayName + " +" + scanItem.points);
-      setTimeout(processScanQueue, 250);
+      setTimeout(processScanQueue, 50);
     }
 
     function canShowSyncStatus() {

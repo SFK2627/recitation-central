@@ -1,4 +1,4 @@
-const CACHE_NAME = "recitation-offline-v8-auto-activity";
+const CACHE_NAME = "recitation-offline-v9-fast-feedback-safe";
 const APP_SHELL = [
   "./",
   "./index.html",

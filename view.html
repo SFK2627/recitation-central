@@ -534,19 +534,23 @@
     .live-toast {
       position: fixed;
       left: 50%;
-      top: clamp(16px, 2vw, 30px);
+      top: clamp(18px, 5vh, 70px);
       z-index: 100;
       display: grid;
       grid-template-columns: auto 1fr auto;
-      gap: 14px;
+      gap: clamp(14px, 1.6vw, 26px);
       align-items: center;
-      width: min(900px, calc(100% - 28px));
-      border: 3px solid rgba(255, 212, 59, 0.72);
-      border-radius: 26px;
-      padding: clamp(12px, 1.2vw, 18px) clamp(16px, 1.6vw, 24px);
-      background: linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(31, 41, 55, 0.98));
+      width: min(1120px, calc(100% - 28px));
+      border: 4px solid rgba(255, 212, 59, 0.88);
+      border-radius: 30px;
+      padding: clamp(16px, 1.8vw, 30px) clamp(18px, 2.4vw, 40px);
+      background:
+        radial-gradient(circle at top left, rgba(255, 212, 59, 0.22), transparent 34%),
+        linear-gradient(135deg, rgba(17, 24, 39, 0.99), rgba(31, 41, 55, 0.99));
       color: white;
-      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.34);
+      box-shadow:
+        0 24px 70px rgba(15, 23, 42, 0.38),
+        0 0 0 8px rgba(255, 212, 59, 0.12);
       transform: translate(-50%, -160%) scale(0.96);
       opacity: 0;
       pointer-events: none;
@@ -559,17 +563,17 @@
     .toast-icon {
       display: grid;
       place-items: center;
-      width: clamp(46px, 4.2vw, 78px);
-      height: clamp(46px, 4.2vw, 78px);
-      border-radius: 22px;
+      width: clamp(58px, 5.2vw, 98px);
+      height: clamp(58px, 5.2vw, 98px);
+      border-radius: 26px;
       background: var(--yellow);
       color: var(--black);
-      font-size: clamp(24px, 2.4vw, 44px);
+      font-size: clamp(30px, 3vw, 56px);
       box-shadow: inset 0 -5px 0 rgba(17, 24, 39, 0.12);
     }
 
     .toast-name {
-      font-size: clamp(18px, 2vw, 38px);
+      font-size: clamp(26px, 3.2vw, 66px);
       line-height: 1;
       font-weight: 950;
       letter-spacing: -0.045em;
@@ -578,13 +582,13 @@
     .toast-sub {
       margin-top: 5px;
       color: rgba(255, 255, 255, 0.68);
-      font-size: clamp(12px, 1vw, 18px);
+      font-size: clamp(15px, 1.35vw, 26px);
       font-weight: 800;
     }
 
     .toast-points {
       color: #86efac;
-      font-size: clamp(28px, 3vw, 62px);
+      font-size: clamp(40px, 4.5vw, 92px);
       font-weight: 950;
       white-space: nowrap;
     }
@@ -959,7 +963,53 @@
     let refreshTimer = null;
     let isLoadingLeaderboard = false;
     let lastToastTimer = null;
+    let audioContext = null;
+    let audioUnlocked = false;
     const LIVE_REFRESH_MS = 2000;
+
+    function unlockLeaderboardAudio() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+
+      if (!audioContext) {
+        audioContext = new AudioContext();
+      }
+
+      if (audioContext.state === "suspended") {
+        audioContext.resume().catch(() => {});
+      }
+
+      audioUnlocked = true;
+    }
+
+    function playTone(frequency, startAt, duration, volume) {
+      if (!audioContext || audioContext.state !== "running") return;
+
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(startAt);
+      oscillator.stop(startAt + duration + 0.025);
+    }
+
+    function playPointsSound() {
+      if (!audioUnlocked) return;
+      unlockLeaderboardAudio();
+      if (!audioContext || audioContext.state !== "running") return;
+
+      const now = audioContext.currentTime;
+      playTone(660, now, 0.11, 0.08);
+      playTone(880, now + 0.1, 0.13, 0.07);
+      playTone(1175, now + 0.22, 0.18, 0.055);
+    }
 
     function callJsonp(url, params, prefix) {
       return new Promise((resolve, reject) => {
@@ -1251,8 +1301,9 @@
       liveToast.classList.add("show");
 
       clearTimeout(lastToastTimer);
-      lastToastTimer = setTimeout(() => liveToast.classList.remove("show"), 1700);
+      lastToastTimer = setTimeout(() => liveToast.classList.remove("show"), 2300);
 
+      playPointsSound();
       burstConfetti(Math.min(18, 8 + changes.length * 4));
     }
 
@@ -1380,6 +1431,7 @@
     }
 
     sectionSelect.addEventListener("change", () => {
+      unlockLeaderboardAudio();
       firstLoad = true;
       previousPoints.clear();
       gainedStudents.clear();
@@ -1387,13 +1439,19 @@
       restartAutoRefresh();
     });
 
-    sortSelect.addEventListener("change", renderLeaderboard);
+    sortSelect.addEventListener("change", () => {
+      unlockLeaderboardAudio();
+      renderLeaderboard();
+    });
     searchInput.addEventListener("input", renderLeaderboard);
     refreshButton.addEventListener("click", async () => {
+      unlockLeaderboardAudio();
       clearTimeout(refreshTimer);
       await loadLeaderboard();
       restartAutoRefresh();
     });
+    document.addEventListener("pointerdown", unlockLeaderboardAudio, { once: true });
+    document.addEventListener("keydown", unlockLeaderboardAudio, { once: true });
 
     loadSections();
     restartAutoRefresh();

@@ -994,6 +994,7 @@
     const REQUEST_TIMEOUT_MS = 18000;
     const SCANNER_REQUEST_TIMEOUT_MS = 30000;
     const PENDING_SCANS_KEY = "recitationPendingScansV1";
+    const REVIEW_SCANS_KEY = "recitationReviewScansV1";
     const STUDENT_CACHE_KEY = "recitationStudentCacheV1";
     const BATCH_SYNC_SIZE = 5;
 
@@ -1125,15 +1126,67 @@
       updateSyncPendingButton();
     }
 
+    function loadReviewScans() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(REVIEW_SCANS_KEY) || "[]");
+        return Array.isArray(stored) ? stored : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveReviewScans(scans) {
+      localStorage.setItem(REVIEW_SCANS_KEY, JSON.stringify(scans));
+    }
+
+    function moveScansToReview(scans, reason) {
+      if (!scans.length) return;
+
+      const reviewScans = loadReviewScans();
+      scans.forEach((scanItem) => {
+        reviewScans.unshift({
+          ...scanItem,
+          reviewReason: reason || "Needs checking",
+          reviewAt: Date.now()
+        });
+      });
+
+      saveReviewScans(reviewScans.slice(0, 100));
+      updateSyncPendingButton();
+    }
+
+    function showReviewScans() {
+      const reviewScans = loadReviewScans();
+
+      if (!reviewScans.length) {
+        showResult(scannerResult, "success", "No scans need review.");
+        return;
+      }
+
+      const preview = reviewScans.slice(0, 5).map((scanItem) => {
+        const name = scanItem.cachedName ? scanItem.cachedName + " " : "";
+        return name + "(" + scanItem.studentId + ") - " + (scanItem.reviewReason || "Needs checking");
+      }).join("\n");
+
+      showResult(
+        scannerResult,
+        "queued",
+        "Needs Review: " + reviewScans.length + " scan(s)\n" + preview
+      );
+    }
+
     function getPendingText() {
       const count = scanQueue.length;
       return count + " pending sync" + (count === 1 ? "" : "s");
     }
 
     function updateSyncPendingButton() {
-      syncPendingButton.style.display = scanQueue.length > 0 ? "block" : "none";
+      const reviewCount = loadReviewScans().length;
+      syncPendingButton.style.display = scanQueue.length > 0 || reviewCount > 0 ? "block" : "none";
       syncPendingButton.innerText = scanQueue.length > 0
         ? "Sync Pending Now (" + scanQueue.length + ")"
+        : reviewCount > 0
+          ? "Needs Review (" + reviewCount + ")"
         : "Sync Pending Now";
     }
 
@@ -1383,10 +1436,9 @@
           );
         }
 
-        let canRemove = await sendScanBatchToBackend(batch);
-        let removeCount = batch.length;
+        let syncResult = await sendScanBatchToBackend(batch);
 
-        if (!canRemove) {
+        if (!syncResult.ok) {
           if (batch.length > 1) {
             if (forceStatus || canShowSyncStatus()) {
               showResult(
@@ -1396,12 +1448,11 @@
               );
             }
 
-            canRemove = await sendScanToBackend(batch[0]);
-            removeCount = 1;
+            syncResult = await sendScanToBackend(batch[0]);
           }
         }
 
-        if (!canRemove) {
+        if (!syncResult.ok) {
           showResult(
             scannerResult,
             "queued",
@@ -1410,14 +1461,22 @@
           break;
         }
 
-        scanQueue.splice(0, removeCount);
+        const removeIds = new Set(syncResult.removeIds || []);
+        scanQueue = scanQueue.filter((scanItem) => !removeIds.has(scanItem.id));
         savePendingScans();
       }
 
       queueProcessing = false;
 
       if (scanQueue.length === 0 && (forceStatus || canShowSyncStatus())) {
-        showResult(scannerResult, "success", "All pending scans are synced.");
+        const reviewCount = loadReviewScans().length;
+        showResult(
+          scannerResult,
+          reviewCount ? "queued" : "success",
+          reviewCount
+            ? "Pending sync done. " + reviewCount + " scan(s) need review."
+            : "All pending scans are synced."
+        );
       }
     }
 
@@ -1444,10 +1503,10 @@
 
         if (data.status === "success") {
           addRecentScan(data.message);
-          return true;
+          return { ok: true, removeIds: [scanItem.id] };
         } else if (data.status === "duplicate") {
           addRecentScan(data.message);
-          return true;
+          return { ok: true, removeIds: [scanItem.id] };
         } else {
           playErrorFeedback();
           addRecentScan(data.message || "Scan was rejected by backend.");
@@ -1460,7 +1519,12 @@
             message.includes("Invalid points") ||
             message.includes("Activity description is required");
 
-          return isPermanentError;
+          if (isPermanentError) {
+            moveScansToReview([scanItem], data.message || "Invalid scan");
+            return { ok: true, removeIds: [scanItem.id] };
+          }
+
+          return { ok: false, removeIds: [] };
         }
       } catch (error) {
         showResult(
@@ -1469,7 +1533,7 @@
           "Backend did not respond yet.\n" +
             scanItem.studentId + " stays pending and will retry."
         );
-        return false;
+        return { ok: false, removeIds: [] };
       }
     }
 
@@ -1489,26 +1553,59 @@
           })))
         }, "scannerBatchCallback_", SCANNER_REQUEST_TIMEOUT_MS);
 
-        const resultType = data.status === "success" ? "success" : "error";
-        if (data.status !== "success" || canShowSyncStatus()) {
+        const resultType = data.status === "success" || data.status === "partial" ? "success" : "error";
+        if ((data.status !== "success" && data.status !== "partial") || canShowSyncStatus()) {
           showResult(scannerResult, resultType, data.message || "Batch sync finished.");
+        }
+
+        if ((data.status === "success" || data.status === "partial") && Array.isArray(data.results)) {
+          const resultMap = new Map(data.results.map((result) => [String(result.requestId || ""), result]));
+          const removeIds = [];
+          const reviewScans = [];
+
+          batch.forEach((scanItem) => {
+            const result = resultMap.get(scanItem.id);
+            if (!result) return;
+
+            if (result.status === "success" || result.status === "duplicate") {
+              removeIds.push(scanItem.id);
+              return;
+            }
+
+            reviewScans.push({
+              ...scanItem,
+              backendMessage: result.message || "Scan needs checking"
+            });
+            removeIds.push(scanItem.id);
+          });
+
+          if (reviewScans.length) {
+            moveScansToReview(
+              reviewScans,
+              reviewScans.map((scanItem) => scanItem.backendMessage).join("; ")
+            );
+            addRecentScan(reviewScans.length + " scan(s) moved to Needs Review.");
+          }
+
+          addRecentScan(data.message || "Batch sync finished.");
+          return { ok: true, removeIds };
         }
 
         if (data.status === "success") {
           addRecentScan(data.message || "Batch sync finished.");
-          return true;
+          return { ok: true, removeIds: batch.map((scanItem) => scanItem.id) };
         }
 
         playErrorFeedback();
         addRecentScan(data.message || "Batch sync failed. Pending scans were kept.");
-        return false;
+        return { ok: false, removeIds: [] };
       } catch (error) {
         showResult(
           scannerResult,
           "queued",
           "Backend did not respond yet.\n" + batch.length + " scan(s) stay pending."
         );
-        return false;
+        return { ok: false, removeIds: [] };
       }
     }
 
@@ -1815,7 +1912,14 @@
     sectionFilter.addEventListener("change", loadDashboard);
     adminSort.addEventListener("change", refreshAdminStudentsView);
     adminSearch.addEventListener("input", refreshAdminStudentsView);
-    syncPendingButton.addEventListener("click", () => processScanQueue(true));
+    syncPendingButton.addEventListener("click", () => {
+      if (scanQueue.length === 0 && loadReviewScans().length > 0) {
+        showReviewScans();
+        return;
+      }
+
+      processScanQueue(true);
+    });
     window.addEventListener("online", () => {
       refreshStudentCacheFromBackend();
       processScanQueue();

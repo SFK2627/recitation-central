@@ -1126,6 +1126,7 @@
     const SCANNER_PAUSE_MS = 260;
     const REQUEST_TIMEOUT_MS = 18000;
     const SCANNER_REQUEST_TIMEOUT_MS = 30000;
+    const ADMIN_REQUEST_TIMEOUT_MS = 45000;
     const PENDING_SCANS_KEY = "recitationPendingScansV1";
     const REVIEW_SCANS_KEY = "recitationReviewScansV1";
     const STUDENT_CACHE_KEY = "recitationStudentCacheV1";
@@ -1405,7 +1406,7 @@
       }
     }
 
-    function renderCachedAdminDashboard(section) {
+    function renderCachedAdminDashboard(section, showRefreshMessage = true) {
       const cached = loadAdminDashboardCache(section);
       if (!cached) return false;
 
@@ -1413,7 +1414,9 @@
       currentAdminStudents = cached.students || [];
       cacheStudentsLocally(currentAdminStudents);
       refreshAdminStudentsView();
-      showResult(adminResult, "loading", "Showing saved admin data. Refreshing online...");
+      if (showRefreshMessage) {
+        showResult(adminResult, "loading", "Showing saved admin data. Refreshing online...");
+      }
       return true;
     }
 
@@ -1430,7 +1433,7 @@
 
       try {
         const data = await callJsonp(ADMIN_API_URL, {
-          action: "publicLeaderboard",
+          action: "publicStudentCache",
           section: ""
         }, "studentCacheCallback_", REQUEST_TIMEOUT_MS);
 
@@ -1947,11 +1950,18 @@
         const data = await callJsonp(ADMIN_API_URL, {
           ...params,
           pin
-        }, "adminCallback_");
+        }, "adminCallback_", ADMIN_REQUEST_TIMEOUT_MS);
         showResult(adminResult, data.status === "success" ? "success" : "error", data.message || "Done.");
         return data;
       } catch (error) {
-        showResult(adminResult, "error", "System Error: " + error.message);
+        const hasCachedData = currentAdminStudents.length > 0;
+        showResult(
+          adminResult,
+          hasCachedData ? "queued" : "error",
+          hasCachedData
+            ? "Backend is slow. Showing saved data for now. Try Refresh again."
+            : "System Error: " + error.message
+        );
         return null;
       } finally {
         setAdminBusy(false);

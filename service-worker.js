@@ -1,4 +1,4 @@
-const CACHE_NAME = "recitation-offline-v2-github-safe";
+const CACHE_NAME = "recitation-offline-v4-instant-record";
 const APP_SHELL = [
   "./",
   "./index.html",

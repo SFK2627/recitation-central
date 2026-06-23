@@ -990,18 +990,21 @@
     });
 
     const SCAN_COOLDOWN_MS = 6000;
-    const SCANNER_PAUSE_MS = 750;
+    const SCANNER_PAUSE_MS = 260;
     const REQUEST_TIMEOUT_MS = 18000;
     const SCANNER_REQUEST_TIMEOUT_MS = 30000;
     const PENDING_SCANS_KEY = "recitationPendingScansV1";
-    const BATCH_SYNC_SIZE = 10;
+    const STUDENT_CACHE_KEY = "recitationStudentCacheV1";
+    const BATCH_SYNC_SIZE = 5;
 
     let scanPauseActive = false;
     let queueProcessing = false;
     let scannerStarted = false;
     let audioContext = null;
+    let lastLocalRecordAt = 0;
     const recentScans = [];
     let scanQueue = loadPendingScans();
+    let localStudentCache = loadStudentCache();
     const recentScanLocks = new Map();
     const duplicateNoticeLocks = new Map();
 
@@ -1134,6 +1137,81 @@
         : "Sync Pending Now";
     }
 
+    function normalizeCacheId(studentId) {
+      return String(studentId || "").trim().toUpperCase();
+    }
+
+    function loadStudentCache() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STUDENT_CACHE_KEY) || "{}");
+        return stored && typeof stored === "object" && stored.students ? stored : {
+          students: {},
+          count: 0,
+          updatedAt: 0
+        };
+      } catch (error) {
+        return {
+          students: {},
+          count: 0,
+          updatedAt: 0
+        };
+      }
+    }
+
+    function saveStudentCache(cacheData) {
+      localStudentCache = cacheData;
+      localStorage.setItem(STUDENT_CACHE_KEY, JSON.stringify(cacheData));
+    }
+
+    function cacheStudentsLocally(students) {
+      const studentMap = {};
+
+      (students || []).forEach((student) => {
+        const key = normalizeCacheId(student.studentId);
+        if (!key) return;
+
+        studentMap[key] = {
+          studentId: String(student.studentId || "").trim(),
+          fullName: String(student.fullName || "").trim(),
+          section: String(student.section || "").trim()
+        };
+      });
+
+      saveStudentCache({
+        students: studentMap,
+        count: Object.keys(studentMap).length,
+        updatedAt: Date.now()
+      });
+    }
+
+    function getCachedStudent(studentId) {
+      return localStudentCache.students[normalizeCacheId(studentId)] || null;
+    }
+
+    function hasLocalStudentCache() {
+      return Boolean(localStudentCache.count && Object.keys(localStudentCache.students || {}).length);
+    }
+
+    async function refreshStudentCacheFromBackend() {
+      if (!navigator.onLine) return false;
+
+      try {
+        const data = await callJsonp(ADMIN_API_URL, {
+          action: "publicLeaderboard",
+          section: ""
+        }, "studentCacheCallback_", REQUEST_TIMEOUT_MS);
+
+        if (data && data.status === "success" && Array.isArray(data.students)) {
+          cacheStudentsLocally(data.students);
+          return true;
+        }
+      } catch (error) {
+        return false;
+      }
+
+      return false;
+    }
+
     function normalizeStudentId(studentIdValue) {
       return String(studentIdValue || "").trim();
     }
@@ -1201,6 +1279,28 @@
         return null;
       }
 
+      const cachedStudent = getCachedStudent(studentId);
+
+      if (!navigator.onLine && !hasLocalStudentCache()) {
+        showResult(
+          scannerResult,
+          "error",
+          "Offline validation unavailable.\nOpen the app online once to save the student list."
+        );
+        playErrorFeedback();
+        return null;
+      }
+
+      if (!navigator.onLine && hasLocalStudentCache() && !cachedStudent) {
+        showResult(
+          scannerResult,
+          "error",
+          "Unknown Student ID while offline: " + studentId + "\nScan was not accepted."
+        );
+        playErrorFeedback();
+        return null;
+      }
+
       if (!activity) {
         showResult(scannerResult, "error", "Please enter an activity name.");
         return null;
@@ -1225,6 +1325,8 @@
         id: "scan_" + Date.now() + "_" + Math.floor(Math.random() * 100000),
         key,
         studentId,
+        cachedName: cachedStudent ? cachedStudent.fullName : "",
+        cachedSection: cachedStudent ? cachedStudent.section : "",
         activity,
         points,
         attempts: 0,
@@ -1235,20 +1337,30 @@
     function enqueueScan(scanItem) {
       scanQueue.push(scanItem);
       savePendingScans();
+      lastLocalRecordAt = Date.now();
+      const displayName = scanItem.cachedName
+        ? scanItem.cachedName + " (" + scanItem.studentId + ")"
+        : scanItem.studentId;
       showResult(
         scannerResult,
-        "queued",
-        "Saved on this device: " + scanItem.studentId + " (+" + scanItem.points + ")\n" +
-          getPendingText() + ". You may scan the next student."
+        "success",
+        "Recorded: " + displayName + " (+" + scanItem.points + ")\nReady for next student."
       );
-      vibrate(35);
-      processScanQueue();
+      playSuccessFeedback();
+      addRecentScan("Pending sync: " + displayName + " +" + scanItem.points);
+      setTimeout(processScanQueue, 250);
     }
 
-    async function processScanQueue() {
+    function canShowSyncStatus() {
+      return Date.now() - lastLocalRecordAt > 1800;
+    }
+
+    async function processScanQueue(forceStatus = false) {
       if (queueProcessing) return;
       if (!navigator.onLine) {
-        showResult(scannerResult, "queued", "No internet connection.\n" + getPendingText() + " saved on this device.");
+        if (forceStatus) {
+          showResult(scannerResult, "queued", "No internet connection.\n" + getPendingText() + " saved on this device.");
+        }
         return;
       }
 
@@ -1263,13 +1375,31 @@
         });
         savePendingScans();
 
-        showResult(
-          scannerResult,
-          "scanning",
-          "Syncing " + batch.length + " scan(s)...\n" + getPendingText()
-        );
+        if (forceStatus || canShowSyncStatus()) {
+          showResult(
+            scannerResult,
+            "scanning",
+            "Syncing " + batch.length + " scan(s)...\n" + getPendingText()
+          );
+        }
 
-        const canRemove = await sendScanBatchToBackend(batch);
+        let canRemove = await sendScanBatchToBackend(batch);
+        let removeCount = batch.length;
+
+        if (!canRemove) {
+          if (batch.length > 1) {
+            if (forceStatus || canShowSyncStatus()) {
+              showResult(
+                scannerResult,
+                "scanning",
+                "Batch sync failed. Trying one-by-one...\n" + getPendingText()
+              );
+            }
+
+            canRemove = await sendScanToBackend(batch[0]);
+            removeCount = 1;
+          }
+        }
 
         if (!canRemove) {
           showResult(
@@ -1280,13 +1410,13 @@
           break;
         }
 
-        scanQueue.splice(0, batch.length);
+        scanQueue.splice(0, removeCount);
         savePendingScans();
       }
 
       queueProcessing = false;
 
-      if (scanQueue.length === 0) {
+      if (scanQueue.length === 0 && (forceStatus || canShowSyncStatus())) {
         showResult(scannerResult, "success", "All pending scans are synced.");
       }
     }
@@ -1306,20 +1436,31 @@
             ? "queued"
             : "error";
 
-        showResult(scannerResult, resultType, data.message);
+        if (data.status !== "success" && data.status !== "duplicate") {
+          showResult(scannerResult, resultType, data.message);
+        } else if (canShowSyncStatus()) {
+          showResult(scannerResult, resultType, data.message);
+        }
 
         if (data.status === "success") {
-          playSuccessFeedback();
           addRecentScan(data.message);
           return true;
         } else if (data.status === "duplicate") {
           addRecentScan(data.message);
           return true;
         } else {
-          recentScanLocks.delete(scanItem.key);
           playErrorFeedback();
           addRecentScan(data.message || "Scan was rejected by backend.");
-          return true;
+          recentScanLocks.delete(scanItem.key);
+
+          const message = String(data.message || "");
+          const isPermanentError =
+            message.includes("Student ID not found") ||
+            message.includes("Invalid Student ID") ||
+            message.includes("Invalid points") ||
+            message.includes("Activity description is required");
+
+          return isPermanentError;
         }
       } catch (error) {
         showResult(
@@ -1349,16 +1490,18 @@
         }, "scannerBatchCallback_", SCANNER_REQUEST_TIMEOUT_MS);
 
         const resultType = data.status === "success" ? "success" : "error";
-        showResult(scannerResult, resultType, data.message || "Batch sync finished.");
+        if (data.status !== "success" || canShowSyncStatus()) {
+          showResult(scannerResult, resultType, data.message || "Batch sync finished.");
+        }
 
         if (data.status === "success") {
-          playSuccessFeedback();
           addRecentScan(data.message || "Batch sync finished.");
           return true;
         }
 
         playErrorFeedback();
-        return true;
+        addRecentScan(data.message || "Batch sync failed. Pending scans were kept.");
+        return false;
       } catch (error) {
         showResult(
           scannerResult,
@@ -1388,7 +1531,7 @@
 
       setTimeout(() => {
         manualButton.disabled = false;
-      }, 500);
+      }, 150);
     }
 
     async function startScanner() {
@@ -1642,6 +1785,7 @@
       if (!data || data.status !== "success") return;
       renderSections(data.sections || []);
       currentAdminStudents = data.students || [];
+      cacheStudentsLocally(currentAdminStudents);
       refreshAdminStudentsView();
     }
 
@@ -1659,6 +1803,7 @@
         if (data.sections && data.students) {
           renderSections(data.sections);
           currentAdminStudents = data.students;
+          cacheStudentsLocally(currentAdminStudents);
           refreshAdminStudentsView();
         }
       }
@@ -1670,9 +1815,12 @@
     sectionFilter.addEventListener("change", loadDashboard);
     adminSort.addEventListener("change", refreshAdminStudentsView);
     adminSearch.addEventListener("input", refreshAdminStudentsView);
-    syncPendingButton.addEventListener("click", processScanQueue);
-    window.addEventListener("online", processScanQueue);
-    window.addEventListener("focus", processScanQueue);
+    syncPendingButton.addEventListener("click", () => processScanQueue(true));
+    window.addEventListener("online", () => {
+      refreshStudentCacheFromBackend();
+      processScanQueue();
+    });
+    window.addEventListener("focus", () => processScanQueue());
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) processScanQueue();
     });
@@ -1689,6 +1837,7 @@
       }
 
       updateSyncPendingButton();
+      refreshStudentCacheFromBackend();
       processScanQueue();
     });
   </script>

@@ -83,6 +83,30 @@
       white-space: nowrap;
     }
 
+    .hero-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      border: 1px solid rgba(255, 212, 59, 0.36);
+      border-radius: 999px;
+      padding: 0 13px;
+      color: var(--yellow);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
     .panel {
       margin-top: 12px;
       border: 1px solid var(--line);
@@ -155,15 +179,49 @@
     }
 
     .pin-row,
+    .auth-row,
     .filter-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(150px, 0.55fr) auto auto;
+      grid-template-columns: minmax(0, 1fr) minmax(150px, 0.55fr) auto auto auto;
       gap: 10px;
       align-items: end;
     }
 
     .pin-row {
       grid-template-columns: minmax(0, 1fr) 150px;
+    }
+
+    .auth-row {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+    }
+
+    .auth-panel {
+      padding: 10px;
+    }
+
+    .auth-panel .panel-title {
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+
+    .auth-panel input,
+    .auth-panel button {
+      min-height: 42px;
+      font-size: 14px;
+    }
+
+    .auth-panel label {
+      margin-bottom: 4px;
+      font-size: 10px;
+    }
+
+    .auth-panel.signed-in .auth-field,
+    .auth-panel.signed-in #signInButton {
+      display: none;
+    }
+
+    .auth-panel.signed-in .auth-row {
+      grid-template-columns: 1fr auto;
     }
 
     .add-button {
@@ -318,6 +376,7 @@
 
     @media (max-width: 640px) {
       .hero,
+      .auth-row,
       .pin-row,
       .filter-row,
       .modal-actions {
@@ -346,12 +405,28 @@
         <div class="eyebrow">Recitation Central</div>
         <h1>Firebase Admin</h1>
       </div>
-      <div class="live-pill">Live Firestore</div>
+      <div class="hero-actions">
+        <a class="home-link" href="firebase-index.html">Home</a>
+        <div class="live-pill">Live Firestore</div>
+      </div>
     </header>
 
-    <section class="panel">
-      <p class="panel-title">Teacher Access</p>
-      <div class="pin-row">
+    <section id="authPanel" class="panel auth-panel">
+      <p class="panel-title">Teacher Sign In</p>
+      <div class="auth-row">
+        <div class="auth-field">
+          <label for="teacherEmail">Email</label>
+          <input id="teacherEmail" type="email" autocomplete="username" placeholder="Teacher email">
+        </div>
+        <div class="auth-field">
+          <label for="teacherPassword">Password</label>
+          <input id="teacherPassword" type="password" autocomplete="current-password" placeholder="Password">
+        </div>
+        <button id="signInButton" type="button">Sign In</button>
+        <button id="signOutButton" class="secondary" type="button" hidden>Sign Out</button>
+      </div>
+
+      <div id="pinArea" class="pin-row" hidden style="margin-top: 10px;">
         <div>
           <label for="pinInput">Teacher PIN</label>
           <input id="pinInput" type="password" placeholder="Teacher PIN">
@@ -385,7 +460,8 @@
           </select>
         </div>
         <button id="refreshButton" class="secondary" type="button">Reconnect</button>
-        <button id="exportButton" class="secondary" type="button">Export All CSV</button>
+        <button id="exportButton" class="secondary" type="button">Export Totals</button>
+        <button id="exportLogsButton" class="secondary" type="button">Export Logs</button>
       </div>
 
       <div style="margin-top: 10px;">
@@ -432,9 +508,16 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
+      getAuth,
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
       collection,
       deleteDoc,
       doc,
+      getDocs,
       getFirestore,
       onSnapshot,
       orderBy,
@@ -455,8 +538,15 @@
 
     const ADMIN_PIN = "1234";
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
 
+    const authPanel = document.getElementById("authPanel");
+    const pinArea = document.getElementById("pinArea");
+    const teacherEmail = document.getElementById("teacherEmail");
+    const teacherPassword = document.getElementById("teacherPassword");
+    const signInButton = document.getElementById("signInButton");
+    const signOutButton = document.getElementById("signOutButton");
     const pinInput = document.getElementById("pinInput");
     const unlockButton = document.getElementById("unlockButton");
     const adminPanel = document.getElementById("adminPanel");
@@ -466,6 +556,7 @@
     const searchInput = document.getElementById("searchInput");
     const refreshButton = document.getElementById("refreshButton");
     const exportButton = document.getElementById("exportButton");
+    const exportLogsButton = document.getElementById("exportLogsButton");
     const summary = document.getElementById("summary");
     const studentList = document.getElementById("studentList");
     const openModalButton = document.getElementById("openModalButton");
@@ -523,6 +614,31 @@
           second: "2-digit"
         })
       };
+    }
+
+    function formatCsvTimestamp(value) {
+      let date = null;
+
+      if (value && typeof value.toDate === "function") {
+        date = value.toDate();
+      } else if (value && typeof value.toMillis === "function") {
+        date = new Date(value.toMillis());
+      } else if (value) {
+        date = new Date(value);
+      }
+
+      if (!date || Number.isNaN(date.getTime())) {
+        return "";
+      }
+
+      return date.toLocaleString("en-PH", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
     }
 
     function normalizeStudent(docSnap) {
@@ -703,6 +819,57 @@
       showResult("success", "Exported all sections: " + students.length + " student(s) to CSV.");
     }
 
+    async function exportAllLogs() {
+      if (!auth.currentUser) {
+        showResult("error", "Please sign in first.");
+        return;
+      }
+
+      exportLogsButton.disabled = true;
+      showResult("loading", "Preparing full recitation logs export...");
+
+      try {
+        const snapshot = await getDocs(collection(db, "recitationLogs"));
+        const logs = snapshot.docs
+          .map((docSnap) => docSnap.data() || {})
+          .sort((a, b) => {
+            const bTime = b.createdAt && typeof b.createdAt.toMillis === "function" ? b.createdAt.toMillis() : 0;
+            const aTime = a.createdAt && typeof a.createdAt.toMillis === "function" ? a.createdAt.toMillis() : 0;
+            return bTime - aTime;
+          });
+
+        const rows = [
+          ["Date/Time", "Section", "Student ID", "Full Name", "Points", "Activity"],
+          ...logs.map((log) => [
+            formatCsvTimestamp(log.createdAt),
+            log.section || "",
+            log.studentId || "",
+            log.fullName || "",
+            Number(log.points) || 0,
+            log.activity || ""
+          ])
+        ];
+
+        const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "recitation-full-logs-" + new Date().toISOString().slice(0, 10) + ".csv";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+
+        showResult("success", "Exported full recitation logs: " + snapshot.size + " record(s).");
+      } catch (error) {
+        showResult("error", "Logs export failed:\n" + error.message);
+      } finally {
+        exportLogsButton.disabled = false;
+      }
+    }
+
     function openModal(mode, student) {
       const isEdit = mode === "edit";
       modalTitle.textContent = isEdit ? "Edit Student" : "Add Student";
@@ -805,6 +972,11 @@
     }
 
     function subscribeData() {
+      if (!auth.currentUser) {
+        showResult("error", "Please sign in first.");
+        return;
+      }
+
       showResult("loading", "Connecting to Firebase...");
 
       if (unsubscribeStudents) unsubscribeStudents();
@@ -826,6 +998,11 @@
     }
 
     function unlockAdmin() {
+      if (!auth.currentUser) {
+        showResult("error", "Please sign in first.");
+        return;
+      }
+
       if (pinInput.value.trim() !== ADMIN_PIN) {
         showResult("error", "Invalid teacher PIN.");
         return;
@@ -836,6 +1013,60 @@
       subscribeData();
     }
 
+    async function signInTeacher() {
+      const email = teacherEmail.value.trim();
+      const password = teacherPassword.value;
+
+      if (!email || !password) {
+        showResult("error", "Teacher email and password are required.");
+        return;
+      }
+
+      signInButton.disabled = true;
+      showResult("loading", "Signing in...");
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        teacherPassword.value = "";
+      } catch (error) {
+        showResult("error", "Sign in failed:\n" + error.message);
+      } finally {
+        signInButton.disabled = false;
+      }
+    }
+
+    async function signOutTeacher() {
+      if (unsubscribeStudents) unsubscribeStudents();
+      if (unsubscribeSections) unsubscribeSections();
+      unsubscribeStudents = null;
+      unsubscribeSections = null;
+      adminPanel.hidden = true;
+      pinInput.value = "";
+      await signOut(auth);
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      const signedIn = Boolean(user);
+      authPanel.classList.toggle("signed-in", signedIn);
+      pinArea.hidden = !signedIn;
+      signOutButton.hidden = !signedIn;
+      signInButton.hidden = signedIn;
+      teacherEmail.disabled = signedIn;
+      teacherPassword.disabled = signedIn;
+
+      if (signedIn) {
+        showResult("success", "Signed in: " + user.email + "\nEnter teacher PIN to open admin tools.");
+      } else {
+        hideResult();
+        adminPanel.hidden = true;
+      }
+    });
+
+    signInButton.addEventListener("click", signInTeacher);
+    signOutButton.addEventListener("click", signOutTeacher);
+    teacherPassword.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") signInTeacher();
+    });
     unlockButton.addEventListener("click", unlockAdmin);
     pinInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") unlockAdmin();
@@ -858,6 +1089,7 @@
     searchInput.addEventListener("input", renderStudents);
     refreshButton.addEventListener("click", subscribeData);
     exportButton.addEventListener("click", exportAllStudents);
+    exportLogsButton.addEventListener("click", exportAllLogs);
   </script>
 </body>
 </html>

@@ -43,9 +43,29 @@
     }
 
     .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
       padding: 18px;
       background: linear-gradient(135deg, #111827, #1f2937);
       color: white;
+    }
+
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 38px;
+      border: 1px solid rgba(255, 212, 59, 0.36);
+      border-radius: 999px;
+      padding: 0 13px;
+      color: var(--yellow);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
     }
 
     .eyebrow {
@@ -106,9 +126,61 @@
       cursor: pointer;
     }
 
+    button.secondary {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--black);
+    }
+
     button:disabled {
       opacity: 0.65;
       cursor: not-allowed;
+    }
+
+    .auth-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .auth-panel {
+      padding: 10px;
+    }
+
+    .auth-title {
+      margin: 0 0 8px;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .auth-panel input,
+    .auth-panel button {
+      min-height: 42px;
+      font-size: 14px;
+    }
+
+    .auth-panel label {
+      margin-bottom: 4px;
+      font-size: 10px;
+    }
+
+    .auth-panel .result {
+      margin-top: 8px;
+      padding: 9px;
+      font-size: 13px;
+    }
+
+    .auth-panel.signed-in .auth-field,
+    .auth-panel.signed-in #signInButton {
+      display: none;
+    }
+
+    .auth-panel.signed-in .auth-grid {
+      grid-template-columns: 1fr auto;
     }
 
     .quick-points {
@@ -191,8 +263,14 @@
     }
 
     @media (max-width: 560px) {
+      .hero,
+      .auth-grid,
       .manual-row {
         grid-template-columns: 1fr;
+      }
+
+      .home-link {
+        width: fit-content;
       }
     }
   </style>
@@ -200,11 +278,31 @@
 <body>
   <main>
     <section class="hero">
-      <div class="eyebrow">Recitation Central</div>
-      <h1>Firebase Scanner</h1>
+      <div>
+        <div class="eyebrow">Recitation Central</div>
+        <h1>Firebase Scanner</h1>
+      </div>
+      <a class="home-link" href="firebase-index.html">Home</a>
     </section>
 
-    <section class="panel">
+    <section id="authPanel" class="panel auth-panel">
+      <div class="auth-title">Teacher Sign In</div>
+      <div class="auth-grid">
+        <div class="auth-field">
+          <label for="teacherEmail">Email</label>
+          <input id="teacherEmail" type="email" autocomplete="username" placeholder="Teacher email">
+        </div>
+        <div class="auth-field">
+          <label for="teacherPassword">Password</label>
+          <input id="teacherPassword" type="password" autocomplete="current-password" placeholder="Password">
+        </div>
+        <button id="signInButton" type="button">Sign In</button>
+        <button id="signOutButton" class="secondary" type="button" hidden>Sign Out</button>
+      </div>
+      <div id="authResult" class="result"></div>
+    </section>
+
+    <section id="scannerPanel" class="panel" hidden>
       <label for="points">Points</label>
       <input id="points" type="number" min="1" value="1">
 
@@ -234,6 +332,12 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
+      getAuth,
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
       collection,
       doc,
       getDoc,
@@ -254,8 +358,16 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
 
+    const authPanel = document.getElementById("authPanel");
+    const scannerPanel = document.getElementById("scannerPanel");
+    const teacherEmail = document.getElementById("teacherEmail");
+    const teacherPassword = document.getElementById("teacherPassword");
+    const signInButton = document.getElementById("signInButton");
+    const signOutButton = document.getElementById("signOutButton");
+    const authResult = document.getElementById("authResult");
     const pointsInput = document.getElementById("points");
     const manualStudentId = document.getElementById("manualStudentId");
     const manualButton = document.getElementById("manualButton");
@@ -277,6 +389,11 @@
     let audioContext = null;
     const recentLocks = new Map();
     const recentRecords = [];
+
+    function showAuth(type, message) {
+      authResult.className = "result " + type;
+      authResult.textContent = message;
+    }
 
     function showResult(type, message) {
       resultBox.className = "result " + type;
@@ -366,6 +483,12 @@
       unlockFeedback();
       cleanupLocks();
 
+      if (!auth.currentUser) {
+        showResult("error", "Please sign in first before recording.");
+        errorFeedback();
+        return;
+      }
+
       const studentId = normalizeStudentId(studentIdValue);
       const points = Number(pointsInput.value);
       const activity = getDefaultActivityName();
@@ -434,6 +557,46 @@
       }
     }
 
+    async function stopScannerIfNeeded() {
+      if (!scannerStarted) return;
+
+      try {
+        await scanner.stop();
+      } catch (error) {
+        // Scanner may already be stopped.
+      }
+
+      scannerStarted = false;
+      startButton.disabled = false;
+    }
+
+    async function signInTeacher() {
+      const email = teacherEmail.value.trim();
+      const password = teacherPassword.value;
+
+      if (!email || !password) {
+        showAuth("error", "Teacher email and password are required.");
+        return;
+      }
+
+      signInButton.disabled = true;
+      showAuth("loading", "Signing in...");
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        teacherPassword.value = "";
+      } catch (error) {
+        showAuth("error", "Sign in failed:\n" + error.message);
+      } finally {
+        signInButton.disabled = false;
+      }
+    }
+
+    async function signOutTeacher() {
+      await stopScannerIfNeeded();
+      await signOut(auth);
+    }
+
     function pauseScannerBriefly() {
       if (!scannerStarted || scanPauseActive) return;
       scanPauseActive = true;
@@ -496,6 +659,11 @@
     });
 
     startButton.addEventListener("click", startScanner);
+    signInButton.addEventListener("click", signInTeacher);
+    signOutButton.addEventListener("click", signOutTeacher);
+    teacherPassword.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") signInTeacher();
+    });
     pointsInput.addEventListener("input", updateQuickPointButtons);
     quickPointButtons.forEach((button) => {
       button.addEventListener("click", () => {
@@ -503,6 +671,22 @@
         pointsInput.value = button.dataset.points;
         updateQuickPointButtons();
       });
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      const signedIn = Boolean(user);
+      authPanel.classList.toggle("signed-in", signedIn);
+      scannerPanel.hidden = !signedIn;
+      signOutButton.hidden = !signedIn;
+      signInButton.hidden = signedIn;
+      teacherEmail.disabled = signedIn;
+      teacherPassword.disabled = signedIn;
+
+      if (signedIn) {
+        showAuth("success", "Signed in: " + user.email);
+      } else {
+        showAuth("queued", "Sign in required before scanning.");
+      }
     });
   </script>
 </body>

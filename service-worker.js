@@ -1,8 +1,12 @@
-const CACHE_NAME = "recitation-offline-v10-banner-sound";
+const CACHE_NAME = "recitation-firebase-v1-install";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./view.html",
+  "./firebase-index.html",
+  "./scanner-firebase.html",
+  "./view-firebase.html",
+  "./admin-firebase.html",
   "./manifest.json",
   "./icon.svg",
   "./icon-192.png",
@@ -63,6 +67,6 @@ self.addEventListener("fetch", (event) => {
         });
 
       return cached || fetchAndCache;
-    }).catch(() => caches.match("./index.html"))
+    }).catch(() => caches.match("./firebase-index.html"))
   );
 });

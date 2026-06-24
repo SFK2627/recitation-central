@@ -1,8 +1,9 @@
 {
-  "name": "JR Recitation App",
+  "name": "Firebase Recitation Central",
   "short_name": "Recitation",
-  "description": "Centralized scanner and admin app for recitation points.",
-  "start_url": "./",
+  "description": "Firebase scanner, leaderboard, and admin app for recitation points.",
+  "start_url": "./firebase-index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#fff7d6",
   "theme_color": "#111827",

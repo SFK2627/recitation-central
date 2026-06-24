@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Firebase Recitation Admin</title>
+  <style>
+    :root {
+      --yellow: #ffd43b;
+      --gold: #f59e0b;
+      --black: #111827;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: rgba(15, 23, 42, 0.12);
+      --green: #16a34a;
+      --red: #dc2626;
+      --card: rgba(255, 255, 255, 0.94);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 212, 59, 0.46), transparent 34%),
+        linear-gradient(135deg, #fff7d6, #f8fafc 46%, #ffffff);
+    }
+
+    main {
+      width: min(940px, 100%);
+      margin: 0 auto;
+      padding: 14px;
+    }
+
+    .hero,
+    .panel,
+    .student-card,
+    .modal-card {
+      border-radius: 12px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.10);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 18px;
+      background: linear-gradient(135deg, #111827, #1f2937);
+      color: white;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      border: 1px solid rgba(255, 212, 59, 0.36);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--yellow);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 0;
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1;
+    }
+
+    .live-pill {
+      border: 1px solid rgba(134, 239, 172, 0.48);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: #86efac;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .panel {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      padding: 14px;
+      background: var(--card);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 6px;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    input,
+    select {
+      border: 1px solid #cbd5e1;
+      padding: 11px 12px;
+      background: white;
+      color: var(--ink);
+    }
+
+    button {
+      border: 0;
+      background: var(--black);
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--black);
+    }
+
+    button.danger {
+      border: 1px solid #fecaca;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .pin-row,
+    .filter-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(150px, 0.55fr) auto auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .pin-row {
+      grid-template-columns: minmax(0, 1fr) 150px;
+    }
+
+    .add-button {
+      width: 50px;
+      min-height: 50px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--yellow), var(--gold));
+      color: var(--black);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .summary {
+      display: none;
+      margin-top: 10px;
+      border: 1px solid rgba(245, 158, 11, 0.24);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #fff7d6;
+      color: #78350f;
+      font-weight: 900;
+      line-height: 1.35;
+    }
+
+    .result {
+      display: none;
+      margin-top: 12px;
+      border-radius: 10px;
+      padding: 12px;
+      white-space: pre-line;
+      text-align: center;
+      font-weight: 900;
+      line-height: 1.4;
+    }
+
+    .success { display: block; background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+    .error { display: block; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .loading { display: block; background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+
+    .student-list {
+      display: grid;
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .student-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      padding: 12px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .student-name {
+      font-size: 16px;
+      font-weight: 950;
+    }
+
+    .student-meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .points {
+      border-radius: 999px;
+      padding: 8px 11px;
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .empty {
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--muted);
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      place-items: center;
+      padding: 14px;
+      background: rgba(15, 23, 42, 0.58);
+    }
+
+    .modal-backdrop.active {
+      display: grid;
+    }
+
+    .modal-card {
+      width: min(560px, 100%);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      padding: 16px;
+      background: white;
+    }
+
+    .modal-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      margin-bottom: 12px;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .close-button {
+      width: 44px;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--black);
+      font-size: 24px;
+    }
+
+    .form-grid,
+    .modal-actions {
+      display: grid;
+      gap: 10px;
+    }
+
+    .modal-actions {
+      grid-template-columns: 1fr 1fr;
+      margin-top: 12px;
+    }
+
+    .delete-button {
+      grid-column: 1 / -1;
+    }
+
+    input:disabled {
+      background: #f1f5f9;
+      color: #64748b;
+      opacity: 1;
+    }
+
+    @media (max-width: 640px) {
+      .hero,
+      .pin-row,
+      .filter-row,
+      .modal-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .live-pill,
+      .add-button {
+        width: 100%;
+      }
+
+      .student-card {
+        grid-template-columns: 1fr;
+      }
+
+      .points {
+        width: fit-content;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Recitation Central</div>
+        <h1>Firebase Admin</h1>
+      </div>
+      <div class="live-pill">Live Firestore</div>
+    </header>
+
+    <section class="panel">
+      <p class="panel-title">Teacher Access</p>
+      <div class="pin-row">
+        <div>
+          <label for="pinInput">Teacher PIN</label>
+          <input id="pinInput" type="password" placeholder="Teacher PIN">
+        </div>
+        <button id="unlockButton" type="button">Unlock</button>
+      </div>
+    </section>
+
+    <div id="result" class="result"></div>
+
+    <section id="adminPanel" class="panel" hidden>
+      <div class="panel-title">
+        <span>Students</span>
+        <button id="openModalButton" class="add-button" type="button" aria-label="Add student">+</button>
+      </div>
+
+      <div class="filter-row">
+        <div>
+          <label for="sectionFilter">Section</label>
+          <select id="sectionFilter">
+            <option value="">All sections</option>
+          </select>
+        </div>
+        <div>
+          <label for="sortSelect">Sort</label>
+          <select id="sortSelect">
+            <option value="pointsDesc">Most Points</option>
+            <option value="latest">Latest Recitation</option>
+            <option value="az">Name A-Z</option>
+            <option value="pointsAsc">Lowest Points</option>
+          </select>
+        </div>
+        <button id="refreshButton" class="secondary" type="button">Reconnect</button>
+        <button id="exportButton" class="secondary" type="button">Export All CSV</button>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label for="searchInput">Search</label>
+        <input id="searchInput" type="search" placeholder="Search student name or ID">
+      </div>
+
+      <div id="summary" class="summary"></div>
+      <div id="studentList" class="student-list"></div>
+    </section>
+  </main>
+
+  <div id="studentModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add Student</h2>
+        <button id="closeModalButton" class="close-button" type="button">x</button>
+      </div>
+
+      <div class="form-grid">
+        <div>
+          <label for="studentIdInput">Student ID</label>
+          <input id="studentIdInput" type="text" placeholder="Student ID">
+        </div>
+        <div>
+          <label for="fullNameInput">Full Name</label>
+          <input id="fullNameInput" type="text" placeholder="Full Name">
+        </div>
+        <div>
+          <label for="sectionInput">Section</label>
+          <input id="sectionInput" type="text" list="sectionOptions" placeholder="Section">
+          <datalist id="sectionOptions"></datalist>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="addButton" type="button">Add Student</button>
+        <button id="saveButton" class="secondary" type="button">Save Edit</button>
+        <button id="deleteButton" class="danger delete-button" type="button">Delete Student</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      collection,
+      deleteDoc,
+      doc,
+      getFirestore,
+      onSnapshot,
+      orderBy,
+      query,
+      serverTimestamp,
+      setDoc
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBbY8IScU02QfS9Xda175wIJ2dUjrJTIo4",
+      authDomain: "recitation-central.firebaseapp.com",
+      projectId: "recitation-central",
+      storageBucket: "recitation-central.firebasestorage.app",
+      messagingSenderId: "805395065834",
+      appId: "1:805395065834:web:2e71c87ab0578ef4df6093",
+      measurementId: "G-BN4V8X3JE5"
+    };
+
+    const ADMIN_PIN = "1234";
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const pinInput = document.getElementById("pinInput");
+    const unlockButton = document.getElementById("unlockButton");
+    const adminPanel = document.getElementById("adminPanel");
+    const resultBox = document.getElementById("result");
+    const sectionFilter = document.getElementById("sectionFilter");
+    const sortSelect = document.getElementById("sortSelect");
+    const searchInput = document.getElementById("searchInput");
+    const refreshButton = document.getElementById("refreshButton");
+    const exportButton = document.getElementById("exportButton");
+    const summary = document.getElementById("summary");
+    const studentList = document.getElementById("studentList");
+    const openModalButton = document.getElementById("openModalButton");
+    const studentModal = document.getElementById("studentModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const closeModalButton = document.getElementById("closeModalButton");
+    const studentIdInput = document.getElementById("studentIdInput");
+    const fullNameInput = document.getElementById("fullNameInput");
+    const sectionInput = document.getElementById("sectionInput");
+    const sectionOptions = document.getElementById("sectionOptions");
+    const addButton = document.getElementById("addButton");
+    const saveButton = document.getElementById("saveButton");
+    const deleteButton = document.getElementById("deleteButton");
+
+    let allStudents = [];
+    let allSections = [];
+    let unsubscribeStudents = null;
+    let unsubscribeSections = null;
+
+    function showResult(type, message) {
+      resultBox.className = "result " + type;
+      resultBox.textContent = message;
+    }
+
+    function hideResult() {
+      resultBox.className = "result";
+      resultBox.textContent = "";
+    }
+
+    function normalizeId(value) {
+      return String(value || "").trim();
+    }
+
+    function normalizeSectionId(sectionName) {
+      return String(sectionName || "").trim().replace(/[\/\\#?[\]]/g, "-");
+    }
+
+    function latestMillis(student) {
+      return Number(student.latestRecitationMillis || 0);
+    }
+
+    function formatTimestamp(value) {
+      if (!value || typeof value.toMillis !== "function") {
+        return { millis: 0, text: "" };
+      }
+
+      const millis = value.toMillis();
+      return {
+        millis,
+        text: new Date(millis).toLocaleString([], {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        })
+      };
+    }
+
+    function normalizeStudent(docSnap) {
+      const data = docSnap.data() || {};
+      const latest = formatTimestamp(data.latestAt);
+
+      return {
+        studentId: normalizeId(data.studentId || docSnap.id),
+        fullName: normalizeId(data.fullName),
+        section: normalizeId(data.section),
+        totalPoints: Number(data.totalPoints) || 0,
+        latestPoints: Number(data.latestPoints) || 0,
+        latestRecitationMillis: latest.millis,
+        latestRecitationText: latest.text
+      };
+    }
+
+    function renderSections() {
+      const current = sectionFilter.value;
+      sectionFilter.innerHTML = '<option value="">All sections</option>';
+      sectionOptions.innerHTML = "";
+
+      allSections.forEach((sectionName) => {
+        const option = document.createElement("option");
+        option.value = sectionName;
+        option.textContent = sectionName;
+        sectionFilter.appendChild(option);
+
+        const dataOption = document.createElement("option");
+        dataOption.value = sectionName;
+        sectionOptions.appendChild(dataOption);
+      });
+
+      sectionFilter.value = allSections.includes(current) ? current : "";
+    }
+
+    function getVisibleStudents() {
+      const selectedSection = sectionFilter.value;
+      const searchText = searchInput.value.trim().toLowerCase();
+      const sortValue = sortSelect.value;
+
+      let students = allStudents.filter((student) => {
+        if (selectedSection && student.section !== selectedSection) return false;
+        if (!searchText) return true;
+        return [student.studentId, student.fullName, student.section].join(" ").toLowerCase().includes(searchText);
+      });
+
+      students = students.slice();
+
+      if (sortValue === "latest") {
+        students.sort((a, b) => latestMillis(b) - latestMillis(a) || a.fullName.localeCompare(b.fullName));
+      } else if (sortValue === "pointsAsc") {
+        students.sort((a, b) => a.totalPoints - b.totalPoints || a.fullName.localeCompare(b.fullName));
+      } else if (sortValue === "az") {
+        students.sort((a, b) => a.fullName.localeCompare(b.fullName));
+      } else {
+        students.sort((a, b) => b.totalPoints - a.totalPoints || latestMillis(b) - latestMillis(a) || a.fullName.localeCompare(b.fullName));
+      }
+
+      return students;
+    }
+
+    function renderSummary(students) {
+      if (!students.length) {
+        summary.style.display = "none";
+        summary.textContent = "";
+        return;
+      }
+
+      const topStudent = students.reduce((top, student) => {
+        return !top || student.totalPoints > top.totalPoints ? student : top;
+      }, null);
+
+      const latestStudent = students.slice().sort((a, b) => latestMillis(b) - latestMillis(a))[0];
+      const latestText = latestStudent && latestMillis(latestStudent)
+        ? " | Latest: " + latestStudent.fullName
+        : "";
+
+      summary.style.display = "block";
+      summary.textContent = students.length + " student(s) shown | Top: " +
+        topStudent.fullName + " (" + topStudent.totalPoints + " pts)" + latestText;
+    }
+
+    function renderStudents() {
+      const students = getVisibleStudents();
+      renderSummary(students);
+      studentList.innerHTML = "";
+
+      if (!students.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No students found.";
+        studentList.appendChild(empty);
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      students.forEach((student) => {
+        const card = document.createElement("div");
+        const details = document.createElement("div");
+        const name = document.createElement("div");
+        const meta = document.createElement("div");
+        const points = document.createElement("div");
+
+        card.className = "student-card";
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+        name.className = "student-name";
+        meta.className = "student-meta";
+        points.className = "points";
+
+        name.textContent = student.fullName;
+        meta.textContent = student.studentId + " | " + student.section +
+          (student.latestRecitationText ? "\nLatest: " + student.latestRecitationText : "");
+        points.textContent = student.totalPoints + " pts";
+
+        details.appendChild(name);
+        details.appendChild(meta);
+        card.appendChild(details);
+        card.appendChild(points);
+
+        card.addEventListener("click", () => openModal("edit", student));
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openModal("edit", student);
+          }
+        });
+
+        fragment.appendChild(card);
+      });
+
+      studentList.appendChild(fragment);
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? "");
+      return /[",\n\r]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    }
+
+    function exportAllStudents() {
+      const students = allStudents.slice().sort((a, b) => {
+        return a.section.localeCompare(b.section) ||
+          a.fullName.localeCompare(b.fullName) ||
+          a.studentId.localeCompare(b.studentId);
+      });
+
+      if (!students.length) {
+        showResult("error", "No students to export.");
+        return;
+      }
+
+      const rows = [
+        ["Section", "Student ID", "Full Name", "Total Points", "Latest Points", "Latest Recitation"],
+        ...students.map((student) => [
+          student.section,
+          student.studentId,
+          student.fullName,
+          student.totalPoints,
+          student.latestPoints,
+          student.latestRecitationText
+        ])
+      ];
+
+      const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "recitation-all-sections-" + new Date().toISOString().slice(0, 10) + ".csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      showResult("success", "Exported all sections: " + students.length + " student(s) to CSV.");
+    }
+
+    function openModal(mode, student) {
+      const isEdit = mode === "edit";
+      modalTitle.textContent = isEdit ? "Edit Student" : "Add Student";
+      addButton.style.display = isEdit ? "none" : "block";
+      saveButton.style.display = isEdit ? "block" : "none";
+      deleteButton.style.display = isEdit ? "block" : "none";
+      studentIdInput.disabled = isEdit;
+
+      if (isEdit && student) {
+        studentIdInput.value = student.studentId;
+        fullNameInput.value = student.fullName;
+        sectionInput.value = student.section;
+      } else {
+        studentIdInput.value = "";
+        fullNameInput.value = "";
+        sectionInput.value = sectionFilter.value || "";
+      }
+
+      studentModal.classList.add("active");
+      studentModal.setAttribute("aria-hidden", "false");
+      setTimeout(() => (isEdit ? fullNameInput : studentIdInput).focus(), 50);
+    }
+
+    function closeModal() {
+      studentModal.classList.remove("active");
+      studentModal.setAttribute("aria-hidden", "true");
+      studentIdInput.disabled = false;
+    }
+
+    async function saveStudent(mode) {
+      const studentId = normalizeId(studentIdInput.value);
+      const fullName = normalizeId(fullNameInput.value);
+      const section = normalizeId(sectionInput.value);
+
+      if (!studentId || !fullName || !section) {
+        showResult("error", "Student ID, full name, and section are required.");
+        return;
+      }
+
+      addButton.disabled = true;
+      saveButton.disabled = true;
+      showResult("loading", "Saving student...");
+
+      try {
+        await setDoc(doc(db, "students", studentId), {
+          studentId,
+          fullName,
+          section,
+          totalPoints: mode === "add" ? 0 : Number(allStudents.find((student) => student.studentId === studentId)?.totalPoints || 0),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        await setDoc(doc(db, "sections", normalizeSectionId(section)), {
+          name: section,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        closeModal();
+        showResult("success", (mode === "add" ? "Added: " : "Updated: ") + fullName);
+      } catch (error) {
+        showResult("error", "Firebase save failed:\n" + error.message);
+      } finally {
+        addButton.disabled = false;
+        saveButton.disabled = false;
+      }
+    }
+
+    async function deleteStudent() {
+      const studentId = normalizeId(studentIdInput.value);
+      const fullName = normalizeId(fullNameInput.value);
+
+      if (!studentId) {
+        showResult("error", "No student selected.");
+        return;
+      }
+
+      const confirmed = confirm(
+        "Delete " + (fullName || studentId) + " from the student list?\n\n" +
+        "This removes the student profile only. Existing recitation logs will stay."
+      );
+
+      if (!confirmed) return;
+
+      addButton.disabled = true;
+      saveButton.disabled = true;
+      deleteButton.disabled = true;
+      showResult("loading", "Deleting student...");
+
+      try {
+        await deleteDoc(doc(db, "students", studentId));
+        closeModal();
+        showResult("success", "Deleted: " + (fullName || studentId));
+      } catch (error) {
+        showResult("error", "Firebase delete failed:\n" + error.message);
+      } finally {
+        addButton.disabled = false;
+        saveButton.disabled = false;
+        deleteButton.disabled = false;
+      }
+    }
+
+    function subscribeData() {
+      showResult("loading", "Connecting to Firebase...");
+
+      if (unsubscribeStudents) unsubscribeStudents();
+      if (unsubscribeSections) unsubscribeSections();
+
+      unsubscribeSections = onSnapshot(query(collection(db, "sections"), orderBy("name")), (snapshot) => {
+        allSections = snapshot.docs
+          .map((docSnap) => normalizeId((docSnap.data() || {}).name || docSnap.id))
+          .filter(Boolean);
+        renderSections();
+        hideResult();
+      }, (error) => showResult("error", "Sections error:\n" + error.message));
+
+      unsubscribeStudents = onSnapshot(query(collection(db, "students")), (snapshot) => {
+        allStudents = snapshot.docs.map(normalizeStudent);
+        renderStudents();
+        hideResult();
+      }, (error) => showResult("error", "Students error:\n" + error.message));
+    }
+
+    function unlockAdmin() {
+      if (pinInput.value.trim() !== ADMIN_PIN) {
+        showResult("error", "Invalid teacher PIN.");
+        return;
+      }
+
+      adminPanel.hidden = false;
+      showResult("success", "Admin unlocked.");
+      subscribeData();
+    }
+
+    unlockButton.addEventListener("click", unlockAdmin);
+    pinInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") unlockAdmin();
+    });
+    openModalButton.addEventListener("click", () => openModal("add"));
+    closeModalButton.addEventListener("click", closeModal);
+    studentModal.addEventListener("click", (event) => {
+      if (event.target === studentModal) closeModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && studentModal.classList.contains("active")) {
+        closeModal();
+      }
+    });
+    addButton.addEventListener("click", () => saveStudent("add"));
+    saveButton.addEventListener("click", () => saveStudent("edit"));
+    deleteButton.addEventListener("click", deleteStudent);
+    sectionFilter.addEventListener("change", renderStudents);
+    sortSelect.addEventListener("change", renderStudents);
+    searchInput.addEventListener("input", renderStudents);
+    refreshButton.addEventListener("click", subscribeData);
+    exportButton.addEventListener("click", exportAllStudents);
+  </script>
+</body>
+</html>

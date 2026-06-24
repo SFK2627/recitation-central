@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Firebase Recitation Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    :root {
+      --yellow: #ffd43b;
+      --gold: #f59e0b;
+      --black: #111827;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: rgba(15, 23, 42, 0.12);
+      --green: #16a34a;
+      --red: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 212, 59, 0.46), transparent 34%),
+        linear-gradient(135deg, #fff7d6, #f8fafc 46%, #ffffff);
+    }
+
+    main {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      padding: 14px;
+    }
+
+    .hero,
+    .panel {
+      border-radius: 12px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.10);
+    }
+
+    .hero {
+      padding: 18px;
+      background: linear-gradient(135deg, #111827, #1f2937);
+      color: white;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      border: 1px solid rgba(255, 212, 59, 0.36);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--yellow);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 0;
+      font-size: 36px;
+      line-height: 1;
+    }
+
+    .panel {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.94);
+    }
+
+    label {
+      display: block;
+      margin: 0 0 7px;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    input,
+    button {
+      width: 100%;
+      min-height: 52px;
+      border-radius: 10px;
+      font-size: 17px;
+    }
+
+    input {
+      border: 1px solid #cbd5e1;
+      padding: 12px;
+      background: white;
+      color: var(--ink);
+    }
+
+    button {
+      border: 0;
+      background: var(--black);
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .quick-points {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .quick-points button {
+      border: 1px solid rgba(245, 158, 11, 0.26);
+      background: #fff7d6;
+      color: #92400e;
+    }
+
+    .quick-points button.active {
+      border-color: var(--yellow);
+      background: var(--yellow);
+      color: var(--black);
+    }
+
+    .manual-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 118px;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    #startButton {
+      margin-top: 10px;
+      background: linear-gradient(135deg, var(--yellow), var(--gold));
+      color: var(--black);
+    }
+
+    #reader {
+      overflow: hidden;
+      margin-top: 12px;
+      border-radius: 10px;
+      background: #0f172a;
+    }
+
+    .result {
+      display: none;
+      margin-top: 12px;
+      border-radius: 10px;
+      padding: 13px;
+      white-space: pre-line;
+      text-align: center;
+      font-weight: 900;
+      line-height: 1.4;
+    }
+
+    .success { display: block; background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+    .error { display: block; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .loading { display: block; background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+    .queued { display: block; background: #fef3c7; color: #78350f; border: 1px solid #fde68a; }
+
+    .recent {
+      display: none;
+      margin-top: 12px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+
+    .recent h2 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .recent-item {
+      margin-top: 7px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: white;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 560px) {
+      .manual-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="eyebrow">Recitation Central</div>
+      <h1>Firebase Scanner</h1>
+    </section>
+
+    <section class="panel">
+      <label for="points">Points</label>
+      <input id="points" type="number" min="1" value="1">
+
+      <div class="quick-points">
+        <button class="quick-point active" type="button" data-points="1">+1</button>
+        <button class="quick-point" type="button" data-points="2">+2</button>
+        <button class="quick-point" type="button" data-points="3">+3</button>
+        <button class="quick-point" type="button" data-points="5">+5</button>
+      </div>
+
+      <div class="manual-row">
+        <input id="manualStudentId" type="text" placeholder="Type Student ID manually">
+        <button id="manualButton" type="button">Record</button>
+      </div>
+
+      <button id="startButton" type="button">Start Camera Scanner</button>
+      <div id="reader"></div>
+      <div id="result" class="result"></div>
+
+      <div id="recentPanel" class="recent">
+        <h2>Recent Records</h2>
+        <div id="recentList"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      collection,
+      doc,
+      getDoc,
+      getFirestore,
+      increment,
+      runTransaction,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBbY8IScU02QfS9Xda175wIJ2dUjrJTIo4",
+      authDomain: "recitation-central.firebaseapp.com",
+      projectId: "recitation-central",
+      storageBucket: "recitation-central.firebasestorage.app",
+      messagingSenderId: "805395065834",
+      appId: "1:805395065834:web:2e71c87ab0578ef4df6093",
+      measurementId: "G-BN4V8X3JE5"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const pointsInput = document.getElementById("points");
+    const manualStudentId = document.getElementById("manualStudentId");
+    const manualButton = document.getElementById("manualButton");
+    const startButton = document.getElementById("startButton");
+    const resultBox = document.getElementById("result");
+    const recentPanel = document.getElementById("recentPanel");
+    const recentList = document.getElementById("recentList");
+    const quickPointButtons = Array.from(document.querySelectorAll(".quick-point"));
+
+    const scanner = new Html5Qrcode("reader", {
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      verbose: false
+    });
+
+    const SCAN_COOLDOWN_MS = 6000;
+    const SCANNER_PAUSE_MS = 320;
+    let scannerStarted = false;
+    let scanPauseActive = false;
+    let audioContext = null;
+    const recentLocks = new Map();
+    const recentRecords = [];
+
+    function showResult(type, message) {
+      resultBox.className = "result " + type;
+      resultBox.textContent = message;
+    }
+
+    function normalizeStudentId(value) {
+      return String(value || "").trim();
+    }
+
+    function getDefaultActivityName() {
+      const todayText = new Intl.DateTimeFormat("en-PH", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit"
+      }).format(new Date());
+
+      return "Recitation - " + todayText;
+    }
+
+    function updateQuickPointButtons() {
+      const selectedPoints = pointsInput.value;
+      quickPointButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.points === selectedPoints);
+      });
+    }
+
+    function unlockFeedback() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      if (!audioContext) audioContext = new AudioContext();
+      if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+    }
+
+    function beep(frequency, duration, volume) {
+      if (!audioContext || audioContext.state !== "running") return;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.value = volume;
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      setTimeout(() => oscillator.stop(), duration);
+    }
+
+    function successFeedback() {
+      unlockFeedback();
+      beep(740, 80, 0.08);
+      setTimeout(() => beep(980, 110, 0.07), 90);
+      if ("vibrate" in navigator) navigator.vibrate([40, 20, 40]);
+    }
+
+    function errorFeedback() {
+      unlockFeedback();
+      beep(220, 150, 0.08);
+      if ("vibrate" in navigator) navigator.vibrate([100, 40, 100]);
+    }
+
+    function addRecent(message) {
+      recentRecords.unshift(message);
+      if (recentRecords.length > 6) recentRecords.pop();
+      recentPanel.style.display = "block";
+      recentList.innerHTML = "";
+
+      recentRecords.forEach((record) => {
+        const item = document.createElement("div");
+        item.className = "recent-item";
+        item.textContent = record;
+        recentList.appendChild(item);
+      });
+    }
+
+    function cleanupLocks() {
+      const now = Date.now();
+      recentLocks.forEach((expiresAt, key) => {
+        if (expiresAt <= now) recentLocks.delete(key);
+      });
+    }
+
+    function buildLockKey(studentId, points) {
+      return studentId.toUpperCase() + "::" + String(points);
+    }
+
+    async function recordStudent(studentIdValue) {
+      unlockFeedback();
+      cleanupLocks();
+
+      const studentId = normalizeStudentId(studentIdValue);
+      const points = Number(pointsInput.value);
+      const activity = getDefaultActivityName();
+
+      if (!studentId) {
+        showResult("error", "Please scan or type a Student ID.");
+        errorFeedback();
+        return;
+      }
+
+      if (!Number.isFinite(points) || points <= 0) {
+        showResult("error", "Invalid points.");
+        errorFeedback();
+        return;
+      }
+
+      const lockKey = buildLockKey(studentId, points);
+      if (recentLocks.has(lockKey)) {
+        showResult("queued", "Duplicate scan ignored for " + studentId + ".\nMove to the next student.");
+        return;
+      }
+
+      recentLocks.set(lockKey, Date.now() + SCAN_COOLDOWN_MS);
+      showResult("loading", "Saving " + studentId + "...");
+
+      try {
+        const studentRef = doc(db, "students", studentId);
+        const studentSnap = await getDoc(studentRef);
+
+        if (!studentSnap.exists()) {
+          recentLocks.delete(lockKey);
+          showResult("error", "Student ID not found: " + studentId);
+          errorFeedback();
+          return;
+        }
+
+        const student = studentSnap.data() || {};
+        const logRef = doc(collection(db, "recitationLogs"));
+
+        await runTransaction(db, async (transaction) => {
+          transaction.update(studentRef, {
+            totalPoints: increment(points),
+            latestAt: serverTimestamp(),
+            latestPoints: points,
+            updatedAt: serverTimestamp()
+          });
+
+          transaction.set(logRef, {
+            studentId,
+            fullName: student.fullName || "",
+            section: student.section || "",
+            points,
+            activity,
+            createdAt: serverTimestamp()
+          });
+        });
+
+        const displayName = student.fullName || studentId;
+        showResult("success", "Recorded: " + displayName + " +" + points + "\nFirebase leaderboard updates live.");
+        addRecent(displayName + " +" + points + "\n" + (student.section || ""));
+        successFeedback();
+      } catch (error) {
+        recentLocks.delete(lockKey);
+        showResult("error", "Firebase save failed:\n" + error.message);
+        errorFeedback();
+      }
+    }
+
+    function pauseScannerBriefly() {
+      if (!scannerStarted || scanPauseActive) return;
+      scanPauseActive = true;
+
+      try {
+        scanner.pause(true);
+      } catch (error) {
+        // Scanner may already be pausing.
+      }
+
+      setTimeout(() => {
+        scanPauseActive = false;
+        if (!scannerStarted) return;
+
+        try {
+          scanner.resume();
+        } catch (error) {
+          // Scanner may already be running.
+        }
+      }, SCANNER_PAUSE_MS);
+    }
+
+    async function startScanner() {
+      if (scannerStarted) return;
+      unlockFeedback();
+      startButton.disabled = true;
+      showResult("loading", "Starting camera...");
+
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1, disableFlip: true },
+          (decodedText) => {
+            if (scanPauseActive) return;
+            pauseScannerBriefly();
+            recordStudent(decodedText);
+          }
+        );
+
+        scannerStarted = true;
+        showResult("success", "Camera scanner ready.");
+      } catch (error) {
+        startButton.disabled = false;
+        showResult("error", "Camera Error:\n" + error.message);
+      }
+    }
+
+    manualButton.addEventListener("click", () => {
+      const studentId = manualStudentId.value;
+      manualStudentId.value = "";
+      recordStudent(studentId);
+    });
+
+    manualStudentId.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        const studentId = manualStudentId.value;
+        manualStudentId.value = "";
+        recordStudent(studentId);
+      }
+    });
+
+    startButton.addEventListener("click", startScanner);
+    pointsInput.addEventListener("input", updateQuickPointButtons);
+    quickPointButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        unlockFeedback();
+        pointsInput.value = button.dataset.points;
+        updateQuickPointButtons();
+      });
+    });
+  </script>
+</body>
+</html>

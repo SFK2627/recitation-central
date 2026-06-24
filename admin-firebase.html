@@ -437,13 +437,6 @@
         <button id="signOutButton" class="secondary" type="button" hidden>Sign Out</button>
       </div>
 
-      <div id="pinArea" class="pin-row" hidden style="margin-top: 10px;">
-        <div>
-          <label for="pinInput">Teacher PIN</label>
-          <input id="pinInput" type="password" placeholder="Teacher PIN">
-        </div>
-        <button id="unlockButton" type="button">Unlock</button>
-      </div>
     </section>
 
     <div id="result" class="result"></div>
@@ -565,19 +558,15 @@
       measurementId: "G-BN4V8X3JE5"
     };
 
-    const ADMIN_PIN = "1234";
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
     const authPanel = document.getElementById("authPanel");
-    const pinArea = document.getElementById("pinArea");
     const teacherEmail = document.getElementById("teacherEmail");
     const teacherPassword = document.getElementById("teacherPassword");
     const signInButton = document.getElementById("signInButton");
     const signOutButton = document.getElementById("signOutButton");
-    const pinInput = document.getElementById("pinInput");
-    const unlockButton = document.getElementById("unlockButton");
     const adminPanel = document.getElementById("adminPanel");
     const resultBox = document.getElementById("result");
     const sectionFilter = document.getElementById("sectionFilter");
@@ -627,8 +616,8 @@
 
     function normalizeGender(value) {
       const text = String(value || "").trim().toLowerCase();
-      if (text === "male" || text === "boy" || text === "boys") return "Male";
-      if (text === "female" || text === "girl" || text === "girls") return "Female";
+      if (["male", "m", "boy", "boys", "lalaki"].includes(text)) return "Male";
+      if (["female", "f", "girl", "girls", "babae"].includes(text)) return "Female";
       return "";
     }
 
@@ -637,6 +626,14 @@
       if (gender === "Male") return 0;
       if (gender === "Female") return 1;
       return 2;
+    }
+
+    function compareForClassRecord(a, b) {
+      const genderDifference = genderRank(a.gender) - genderRank(b.gender);
+      if (genderDifference) return genderDifference;
+
+      return a.fullName.localeCompare(b.fullName) ||
+        a.studentId.localeCompare(b.studentId);
     }
 
     function safeSheetName(value, fallback) {
@@ -762,7 +759,7 @@
         studentId: normalizeId(data.studentId || docSnap.id),
         fullName: normalizeId(data.fullName),
         section: normalizeId(data.section),
-        gender: normalizeGender(data.gender),
+        gender: normalizeGender(data.gender || data.sex || data.genderIdentity),
         totalPoints: Number(data.totalPoints) || 0,
         termTotals: data.termTotals || {},
         latestPoints: Number(data.latestPoints) || 0,
@@ -915,11 +912,7 @@
       sections.forEach((sectionName, index) => {
         const sectionStudents = students
           .filter((student) => (student.section || "No Section") === sectionName)
-          .sort((a, b) => {
-            return genderRank(a.gender) - genderRank(b.gender) ||
-              a.fullName.localeCompare(b.fullName) ||
-              a.studentId.localeCompare(b.studentId);
-          });
+          .sort(compareForClassRecord);
 
         const rows = [
           ["Student ID", "Full Name", "Points", "Gender", "Latest Points", "Latest Recitation"],
@@ -927,7 +920,7 @@
             student.studentId,
             student.fullName,
             pointsFor(student),
-            student.gender,
+            normalizeGender(student.gender) || "Not set",
             student.latestPoints,
             student.latestRecitationText
           ])
@@ -1155,22 +1148,6 @@
       }, (error) => showResult("error", "Students error:\n" + error.message));
     }
 
-    function unlockAdmin() {
-      if (!auth.currentUser) {
-        showResult("error", "Please sign in first.");
-        return;
-      }
-
-      if (pinInput.value.trim() !== ADMIN_PIN) {
-        showResult("error", "Invalid teacher PIN.");
-        return;
-      }
-
-      adminPanel.hidden = false;
-      showResult("success", "Admin unlocked.");
-      subscribeData();
-    }
-
     async function signInTeacher() {
       const email = teacherEmail.value.trim();
       const password = teacherPassword.value;
@@ -1199,21 +1176,21 @@
       unsubscribeStudents = null;
       unsubscribeSections = null;
       adminPanel.hidden = true;
-      pinInput.value = "";
       await signOut(auth);
     }
 
     onAuthStateChanged(auth, (user) => {
       const signedIn = Boolean(user);
       authPanel.classList.toggle("signed-in", signedIn);
-      pinArea.hidden = !signedIn;
       signOutButton.hidden = !signedIn;
       signInButton.hidden = signedIn;
       teacherEmail.disabled = signedIn;
       teacherPassword.disabled = signedIn;
 
       if (signedIn) {
-        showResult("success", "Signed in: " + user.email + "\nEnter teacher PIN to open admin tools.");
+        adminPanel.hidden = false;
+        showResult("success", "Signed in: " + user.email);
+        subscribeData();
       } else {
         hideResult();
         adminPanel.hidden = true;
@@ -1224,10 +1201,6 @@
     signOutButton.addEventListener("click", signOutTeacher);
     teacherPassword.addEventListener("keydown", (event) => {
       if (event.key === "Enter") signInTeacher();
-    });
-    unlockButton.addEventListener("click", unlockAdmin);
-    pinInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") unlockAdmin();
     });
     openModalButton.addEventListener("click", () => openModal("add"));
     closeModalButton.addEventListener("click", closeModal);

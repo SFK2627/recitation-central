@@ -1,4 +1,4 @@
-const CACHE_NAME = "recitation-firebase-v3-logs-home";
+const CACHE_NAME = "recitation-firebase-v5-term1-legacy";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -123,6 +123,15 @@
       white-space: nowrap;
     }
 
+    .credit {
+      margin-top: 9px;
+      color: rgba(255, 212, 59, 0.82);
+      font-size: clamp(11px, 0.9vw, 13px);
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
     .hero h1 {
       margin: 0;
       font-size: clamp(32px, 4.8vw, 78px);
@@ -176,7 +185,7 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: minmax(260px, 1.4fr) minmax(190px, 0.85fr) minmax(220px, 1fr) auto;
+      grid-template-columns: minmax(260px, 1.3fr) minmax(170px, 0.75fr) minmax(170px, 0.75fr) minmax(220px, 1fr) auto;
       gap: 12px;
       align-items: end;
       margin: clamp(14px, 1.4vw, 22px) 0;
@@ -262,12 +271,19 @@
     }
 
     .section-title h2 {
+      flex: 0 0 auto;
       margin: 0;
       font-size: clamp(20px, 1.8vw, 32px);
-      letter-spacing: -0.04em;
+      letter-spacing: 0;
+      white-space: nowrap;
     }
 
     .section-title span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: right;
       color: var(--muted);
       font-size: clamp(12px, 0.95vw, 15px);
       font-weight: 800;
@@ -904,6 +920,7 @@
         </div>
         <h1>Class Leaderboard</h1>
         <p>Choose a section and view updated recitation points. Rankings refresh automatically for classroom TV display.</p>
+        <div class="credit">Developed by Mr. John Rey Tubello (Sir JR)</div>
       </div>
       <div class="hero-stats">
         <div class="stat-card"><strong id="studentCount">0</strong><span>Students</span></div>
@@ -927,6 +944,16 @@
           <option value="pointsAsc">Lowest Points</option>
           <option value="az">Alphabetical A-Z</option>
           <option value="za">Alphabetical Z-A</option>
+        </select>
+      </div>
+      <div>
+        <label for="termSelect">Term</label>
+        <select id="termSelect">
+          <option value="current">Current Term</option>
+          <option value="term1">Term 1</option>
+          <option value="term2">Term 2</option>
+          <option value="term3">Term 3</option>
+          <option value="allTime">All Time</option>
         </select>
       </div>
       <div>
@@ -988,6 +1015,7 @@
 
     const sectionSelect = document.getElementById("sectionSelect");
     const sortSelect = document.getElementById("sortSelect");
+    const termSelect = document.getElementById("termSelect");
     const searchInput = document.getElementById("searchInput");
     const refreshButton = document.getElementById("refreshButton");
     const leaderboard = document.getElementById("leaderboard");
@@ -1069,6 +1097,65 @@
       statusBox.style.display = "none";
     }
 
+    function getSchoolYear(date) {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      if (month >= 1 && month <= 4) return (year - 1) + "-" + year;
+      return year + "-" + (year + 1);
+    }
+
+    function getTermInfo(date = new Date()) {
+      const monthDay = (date.getMonth() + 1) * 100 + date.getDate();
+      const schoolYear = getSchoolYear(date);
+
+      if (monthDay >= 601 && monthDay <= 909) {
+        return { id: "term1", name: "Term 1", schoolYear };
+      }
+
+      if (monthDay >= 910 && monthDay <= 1215) {
+        return { id: "term2", name: "Term 2", schoolYear };
+      }
+
+      if (monthDay >= 104 && monthDay <= 403) {
+        return { id: "term3", name: "Term 3", schoolYear };
+      }
+
+      return { id: "outOfTerm", name: "Outside Term", schoolYear };
+    }
+
+    function selectedTermId() {
+      const value = termSelect.value;
+      if (value === "current") return getTermInfo().id;
+      return value;
+    }
+
+    function selectedTermLabel() {
+      const value = termSelect.value;
+      if (value === "current") return getTermInfo().name;
+      if (value === "term1") return "Term 1";
+      if (value === "term2") return "Term 2";
+      if (value === "term3") return "Term 3";
+      return "All Time";
+    }
+
+    function pointsFor(student) {
+      const termId = selectedTermId();
+      if (termId === "allTime") return Number(student.totalPoints) || 0;
+
+      const termTotals = student.termTotals || {};
+      const explicitTermPoints = Number(termTotals[termId]) || 0;
+      const assignedTermPoints = ["term1", "term2", "term3", "outOfTerm"].reduce((total, key) => {
+        return total + (Number(termTotals[key]) || 0);
+      }, 0);
+      const legacyUnassignedPoints = Math.max(0, (Number(student.totalPoints) || 0) - assignedTermPoints);
+
+      if (termId === "term1") {
+        return explicitTermPoints + legacyUnassignedPoints;
+      }
+
+      return explicitTermPoints;
+    }
+
     function renderSections(sections) {
       const oldValue = sectionSelect.value;
       sectionSelect.innerHTML = "";
@@ -1092,7 +1179,7 @@
 
     function getRankMap(students) {
       const byPoints = [...students].sort((a, b) => {
-        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+        if (pointsFor(b) !== pointsFor(a)) return pointsFor(b) - pointsFor(a);
         return a.fullName.localeCompare(b.fullName);
       });
 
@@ -1101,9 +1188,10 @@
       let lastPoints = null;
 
       byPoints.forEach((student, index) => {
-        if (student.totalPoints !== lastPoints) {
+        const studentPoints = pointsFor(student);
+        if (studentPoints !== lastPoints) {
           currentRank = index + 1;
-          lastPoints = student.totalPoints;
+          lastPoints = studentPoints;
         }
         rankMap.set(student.studentId, currentRank);
       });
@@ -1128,11 +1216,11 @@
           const bRow = Number(b.latestRecitationRow) || 0;
           if (bLatest !== aLatest) return bLatest - aLatest;
           if (bRow !== aRow) return bRow - aRow;
-          return b.totalPoints - a.totalPoints || a.fullName.localeCompare(b.fullName);
+          return pointsFor(b) - pointsFor(a) || a.fullName.localeCompare(b.fullName);
         });
       } else if (sortValue === "pointsDesc") {
         students.sort((a, b) => {
-          if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+          if (pointsFor(b) !== pointsFor(a)) return pointsFor(b) - pointsFor(a);
           const aLatest = Number(a.latestRecitationMillis) || 0;
           const bLatest = Number(b.latestRecitationMillis) || 0;
           const aRow = Number(a.latestRecitationRow) || 0;
@@ -1143,7 +1231,7 @@
         });
       } else if (sortValue === "pointsAsc") {
         students.sort((a, b) => {
-          if (a.totalPoints !== b.totalPoints) return a.totalPoints - b.totalPoints;
+          if (pointsFor(a) !== pointsFor(b)) return pointsFor(a) - pointsFor(b);
           const aLatest = Number(a.latestRecitationMillis) || 0;
           const bLatest = Number(b.latestRecitationMillis) || 0;
           const aRow = Number(a.latestRecitationRow) || 0;
@@ -1162,19 +1250,19 @@
     }
 
     function renderSummary(students) {
-      const sum = students.reduce((total, student) => total + student.totalPoints, 0);
-      const highest = students.reduce((max, student) => Math.max(max, student.totalPoints), 0);
+      const sum = students.reduce((total, student) => total + pointsFor(student), 0);
+      const highest = students.reduce((max, student) => Math.max(max, pointsFor(student)), 0);
 
       studentCount.innerText = students.length;
       totalPoints.innerText = sum;
       topScore.innerText = highest;
-      sectionLabel.innerText = sectionSelect.value || "No section yet";
+      sectionLabel.innerText = (sectionSelect.value || "No section yet") + " | " + selectedTermLabel();
     }
 
     function getTopThree(students) {
       return [...students]
-        .sort((a, b) => {
-          if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+          .sort((a, b) => {
+          if (pointsFor(b) !== pointsFor(a)) return pointsFor(b) - pointsFor(a);
           const aLatest = Number(a.latestRecitationMillis) || 0;
           const bLatest = Number(b.latestRecitationMillis) || 0;
           const aRow = Number(a.latestRecitationRow) || 0;
@@ -1218,7 +1306,7 @@
         medal.innerText = medalIcons[index];
         name.innerText = student.fullName;
         rankText.innerText = "Rank #" + (index + 1);
-        points.innerText = student.totalPoints;
+        points.innerText = pointsFor(student);
         ptsLabel.innerText = "points";
 
         nameWrap.appendChild(name);
@@ -1278,7 +1366,7 @@
         name.innerText = student.fullName;
         meta.innerText = student.section;
         latestPill.innerText = student.latestRecitationText ? "⚡ Latest: " + student.latestRecitationText : "⚡ Latest reciter";
-        points.innerText = student.totalPoints;
+        points.innerText = pointsFor(student);
         pointsLabel.innerText = "points";
         gainBadge.innerText = "+" + gained;
 
@@ -1344,7 +1432,7 @@
 
       students.forEach((student) => {
         const oldPoints = previousPoints.get(student.studentId);
-        const newPoints = Number(student.totalPoints) || 0;
+        const newPoints = pointsFor(student);
 
         if (!firstLoad && oldPoints !== undefined && newPoints > oldPoints) {
           const gain = newPoints - oldPoints;
@@ -1380,6 +1468,7 @@
         fullName: String(data.fullName || "").trim(),
         section: String(data.section || "").trim(),
         totalPoints: Number(data.totalPoints) || 0,
+        termTotals: data.termTotals || {},
         latestRecitationAt: latestAt ? new Date(latestAt).toISOString() : "",
         latestRecitationMillis: latestAt,
         latestRecitationPoints: Number(data.latestPoints) || 0,
@@ -1435,7 +1524,7 @@
         detectPointChanges(allStudents);
         renderLeaderboard();
         firstLoad = false;
-        updatedText.innerText = "Live updated: " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        updatedText.innerText = selectedTermLabel() + " | Live updated: " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       }, (error) => {
         showStatus("error", "Firebase leaderboard error: " + error.message);
       });
@@ -1452,6 +1541,14 @@
     sortSelect.addEventListener("change", () => {
       unlockLeaderboardAudio();
       renderLeaderboard();
+    });
+    termSelect.addEventListener("change", () => {
+      unlockLeaderboardAudio();
+      firstLoad = true;
+      previousPoints.clear();
+      gainedStudents.clear();
+      renderLeaderboard();
+      firstLoad = false;
     });
     searchInput.addEventListener("input", renderLeaderboard);
     refreshButton.addEventListener("click", () => {

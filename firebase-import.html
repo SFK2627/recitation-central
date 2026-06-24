@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recitation Firebase Importer</title>
+  <style>
+    :root {
+      --yellow: #ffd43b;
+      --black: #111827;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: rgba(15, 23, 42, 0.12);
+      --green: #16a34a;
+      --red: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(135deg, #fff7d6, #f8fafc 45%, #ffffff);
+    }
+
+    main {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .hero,
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+    }
+
+    .hero {
+      padding: 20px;
+      background: linear-gradient(135deg, #111827, #1f2937);
+      color: white;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .hero p {
+      color: rgba(255, 255, 255, 0.74);
+      margin-bottom: 0;
+    }
+
+    .panel {
+      margin-top: 14px;
+      padding: 16px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--yellow);
+      color: var(--black);
+      font-size: 17px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .result {
+      display: none;
+      margin-top: 12px;
+      border-radius: 10px;
+      padding: 12px;
+      white-space: pre-line;
+      font-weight: 800;
+      line-height: 1.45;
+    }
+
+    .loading { display: block; background: #e0f2fe; color: #075985; }
+    .success { display: block; background: #dcfce7; color: #14532d; }
+    .error { display: block; background: #fee2e2; color: #991b1b; }
+
+    code {
+      display: block;
+      overflow: auto;
+      border-radius: 10px;
+      padding: 12px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>Firebase Importer</h1>
+      <p>One-time tool: copy students from the current Google Sheet backend into Firestore.</p>
+    </section>
+
+    <section class="panel">
+      <p>This will create/update:</p>
+      <code>students/{studentId}
+sections/{sectionName}</code>
+      <p>Run this only after Firestore Rules are in test mode.</p>
+      <button id="importButton" type="button">Import Students to Firebase</button>
+      <div id="result" class="result"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      serverTimestamp,
+      writeBatch
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBbY8IScU02QfS9Xda175wIJ2dUjrJTIo4",
+      authDomain: "recitation-central.firebaseapp.com",
+      projectId: "recitation-central",
+      storageBucket: "recitation-central.firebasestorage.app",
+      messagingSenderId: "805395065834",
+      appId: "1:805395065834:web:2e71c87ab0578ef4df6093",
+      measurementId: "G-BN4V8X3JE5"
+    };
+
+    const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbwFpn8Pe0qu1YgibZzlbsOwB0ijK078Z2aWaykB0bn5LJzWdmrjW3xbuyVTz16qTJMqlA/exec";
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const importButton = document.getElementById("importButton");
+    const resultBox = document.getElementById("result");
+
+    function showResult(type, message) {
+      resultBox.className = "result " + type;
+      resultBox.textContent = message;
+    }
+
+    function callJsonp(url, params, prefix) {
+      return new Promise((resolve, reject) => {
+        const callbackName = prefix + Date.now() + "_" + Math.floor(Math.random() * 100000);
+        const script = document.createElement("script");
+        const query = new URLSearchParams();
+
+        Object.keys(params).forEach((key) => query.set(key, params[key]));
+        query.set("callback", callbackName);
+
+        const timeoutId = setTimeout(() => {
+          cleanup();
+          reject(new Error("Google Sheet backend timed out."));
+        }, 30000);
+
+        function cleanup() {
+          clearTimeout(timeoutId);
+          delete window[callbackName];
+          script.remove();
+        }
+
+        window[callbackName] = (data) => {
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error("Could not reach Google Sheet backend."));
+        };
+
+        script.src = url + "?" + query.toString();
+        document.body.appendChild(script);
+      });
+    }
+
+    function normalizeId(value) {
+      return String(value || "").trim();
+    }
+
+    function normalizeSectionId(sectionName) {
+      return String(sectionName || "")
+        .trim()
+        .replace(/[\/\\#?[\]]/g, "-");
+    }
+
+    async function commitInChunks(operations) {
+      let committed = 0;
+
+      for (let index = 0; index < operations.length; index += 450) {
+        const batch = writeBatch(db);
+        operations.slice(index, index + 450).forEach((operation) => operation(batch));
+        await batch.commit();
+        committed += Math.min(450, operations.length - index);
+        showResult("loading", "Writing to Firebase...\n" + committed + " operation(s) committed.");
+      }
+    }
+
+    async function importStudents() {
+      importButton.disabled = true;
+      showResult("loading", "Loading students from current Google Sheet backend...");
+
+      try {
+        const data = await callJsonp(ADMIN_API_URL, {
+          action: "publicStudentCache",
+          section: ""
+        }, "firebaseImportCallback_");
+
+        if (!data || data.status !== "success" || !Array.isArray(data.students)) {
+          throw new Error(data && data.message ? data.message : "Could not load students.");
+        }
+
+        const students = data.students
+          .map((student) => ({
+            studentId: normalizeId(student.studentId),
+            fullName: normalizeId(student.fullName),
+            section: normalizeId(student.section),
+            totalPoints: Number(student.totalPoints) || 0
+          }))
+          .filter((student) => student.studentId && student.fullName && student.section);
+
+        if (!students.length) {
+          throw new Error("No valid students found.");
+        }
+
+        const sections = Array.from(new Set(students.map((student) => student.section))).sort();
+        const operations = [];
+
+        students.forEach((student) => {
+          operations.push((batch) => {
+            batch.set(doc(collection(db, "students"), student.studentId), {
+              studentId: student.studentId,
+              fullName: student.fullName,
+              section: student.section,
+              totalPoints: student.totalPoints,
+              latestAt: null,
+              latestPoints: 0,
+              updatedAt: serverTimestamp()
+            }, { merge: true });
+          });
+        });
+
+        sections.forEach((sectionName) => {
+          operations.push((batch) => {
+            batch.set(doc(collection(db, "sections"), normalizeSectionId(sectionName)), {
+              name: sectionName,
+              updatedAt: serverTimestamp()
+            }, { merge: true });
+          });
+        });
+
+        showResult("loading", "Loaded " + students.length + " student(s).\nWriting " + operations.length + " Firebase operation(s)...");
+        await commitInChunks(operations);
+
+        showResult(
+          "success",
+          "Import complete.\nStudents: " + students.length + "\nSections: " + sections.length +
+            "\nNext: check Firestore collections: students and sections."
+        );
+      } catch (error) {
+        showResult("error", "Import failed:\n" + error.message);
+      } finally {
+        importButton.disabled = false;
+      }
+    }
+
+    importButton.addEventListener("click", importStudents);
+  </script>
+</body>
+</html>

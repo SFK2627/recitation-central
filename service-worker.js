@@ -1,4 +1,4 @@
-const CACHE_NAME = "recitation-firebase-v7-no-admin-pin";
+const CACHE_NAME = "recitation-firebase-v8-bulk-recitation";
 const APP_SHELL = [
   "./",
   "./index.html",

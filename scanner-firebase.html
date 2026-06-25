@@ -271,11 +271,204 @@
       line-height: 1.35;
     }
 
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .action-grid #startButton {
+      margin-top: 0;
+    }
+
+    .bulk-button {
+      background: linear-gradient(135deg, #111827, #374151);
+      color: white;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      background: rgba(15, 23, 42, 0.62);
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(760px, 100%);
+      max-height: 88vh;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #ffffff;
+      box-shadow: 0 24px 72px rgba(15, 23, 42, 0.26);
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+      border-bottom: 1px solid var(--line);
+      padding: 14px;
+      background: linear-gradient(135deg, #111827, #1f2937);
+      color: white;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .modal-header p {
+      margin: 5px 0 0;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .icon-button {
+      width: 42px;
+      min-height: 42px;
+      border: 1px solid rgba(255, 255, 255, 0.20);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.10);
+      color: white;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .bulk-controls {
+      display: grid;
+      grid-template-columns: 1.1fr 0.8fr 1fr;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    .bulk-controls select,
+    .bulk-controls input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px;
+      background: white;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .bulk-list {
+      overflow: auto;
+      padding: 10px 14px;
+      background: #ffffff;
+    }
+
+    .bulk-tools {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .bulk-tools button {
+      width: auto;
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--black);
+      font-size: 12px;
+    }
+
+    .student-check {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 7px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .student-check input {
+      width: 22px;
+      min-height: 22px;
+      accent-color: var(--gold);
+    }
+
+    .student-check strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+
+    .student-check span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .bulk-footer {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 8px;
+      align-items: center;
+      border-top: 1px solid var(--line);
+      padding: 12px 14px;
+      background: #f8fafc;
+    }
+
+    .bulk-footer button {
+      width: auto;
+      min-width: 112px;
+      min-height: 44px;
+      padding: 0 14px;
+      font-size: 14px;
+    }
+
+    .bulk-count {
+      color: #475569;
+      font-size: 13px;
+      font-weight: 950;
+    }
+
     @media (max-width: 560px) {
       .hero,
       .auth-grid,
-      .manual-row {
+      .manual-row,
+      .action-grid,
+      .bulk-controls,
+      .bulk-footer {
         grid-template-columns: 1fr;
+      }
+
+      .bulk-footer button {
+        width: 100%;
       }
 
       .home-link {
@@ -328,7 +521,10 @@
         <button id="manualButton" type="button">Record</button>
       </div>
 
-      <button id="startButton" type="button">Start Camera Scanner</button>
+      <div class="action-grid">
+        <button id="startButton" type="button">Start Camera Scanner</button>
+        <button id="bulkButton" class="bulk-button" type="button">Bulk Recitation</button>
+      </div>
       <div id="reader"></div>
       <div id="result" class="result"></div>
 
@@ -337,6 +533,50 @@
         <div id="recentList"></div>
       </div>
     </section>
+    <div id="bulkModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="bulkTitle">
+      <section class="modal">
+        <div class="modal-header">
+          <div>
+            <h2 id="bulkTitle">Bulk Recitation</h2>
+            <p>Select students, choose points, then record once.</p>
+          </div>
+          <button id="closeBulkButton" class="icon-button" type="button" aria-label="Close bulk recitation">×</button>
+        </div>
+
+        <div class="bulk-controls">
+          <div>
+            <label for="bulkSectionFilter">Section</label>
+            <select id="bulkSectionFilter"></select>
+          </div>
+          <div>
+            <label for="bulkPoints">Points</label>
+            <input id="bulkPoints" type="number" min="1" value="1">
+          </div>
+          <div>
+            <label for="bulkSearch">Search</label>
+            <input id="bulkSearch" type="search" placeholder="Name or Student ID">
+          </div>
+        </div>
+
+        <div class="bulk-list">
+          <div class="bulk-tools">
+            <span id="bulkStatus">Loading students...</span>
+            <span>
+              <button id="selectVisibleButton" type="button">Select Visible</button>
+              <button id="clearSelectedButton" type="button">Clear</button>
+            </span>
+          </div>
+          <div id="bulkStudentList"></div>
+        </div>
+
+        <div class="bulk-footer">
+          <div id="bulkCount" class="bulk-count">0 selected</div>
+          <button id="cancelBulkButton" class="secondary" type="button">Cancel</button>
+          <button id="recordBulkButton" type="button">Record Bulk</button>
+        </div>
+      </section>
+    </div>
+
   </main>
 
   <script type="module">
@@ -351,10 +591,12 @@
       collection,
       doc,
       getDoc,
+      getDocs,
       getFirestore,
       increment,
       runTransaction,
-      serverTimestamp
+      serverTimestamp,
+      writeBatch
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -382,6 +624,19 @@
     const manualStudentId = document.getElementById("manualStudentId");
     const manualButton = document.getElementById("manualButton");
     const startButton = document.getElementById("startButton");
+    const bulkButton = document.getElementById("bulkButton");
+    const bulkModal = document.getElementById("bulkModal");
+    const closeBulkButton = document.getElementById("closeBulkButton");
+    const cancelBulkButton = document.getElementById("cancelBulkButton");
+    const bulkSectionFilter = document.getElementById("bulkSectionFilter");
+    const bulkPoints = document.getElementById("bulkPoints");
+    const bulkSearch = document.getElementById("bulkSearch");
+    const bulkStatus = document.getElementById("bulkStatus");
+    const bulkStudentList = document.getElementById("bulkStudentList");
+    const bulkCount = document.getElementById("bulkCount");
+    const selectVisibleButton = document.getElementById("selectVisibleButton");
+    const clearSelectedButton = document.getElementById("clearSelectedButton");
+    const recordBulkButton = document.getElementById("recordBulkButton");
     const resultBox = document.getElementById("result");
     const recentPanel = document.getElementById("recentPanel");
     const recentList = document.getElementById("recentList");
@@ -399,6 +654,9 @@
     let audioContext = null;
     const recentLocks = new Map();
     const recentRecords = [];
+    let bulkStudents = [];
+    let bulkLoaded = false;
+    let bulkBusy = false;
 
     function showAuth(type, message) {
       authResult.className = "result " + type;
@@ -514,6 +772,255 @@
 
     function buildLockKey(studentId, points) {
       return studentId.toUpperCase() + "::" + String(points);
+    }
+
+
+    function normalizeSection(value) {
+      return String(value || "").trim();
+    }
+
+    function sortStudentsBySectionName(a, b) {
+      const sectionCompare = normalizeSection(a.section).localeCompare(normalizeSection(b.section), undefined, { sensitivity: "base" });
+      if (sectionCompare !== 0) return sectionCompare;
+      return String(a.fullName || "").localeCompare(String(b.fullName || ""), undefined, { sensitivity: "base" });
+    }
+
+    function getVisibleBulkStudents() {
+      const selectedSection = bulkSectionFilter.value;
+      const searchText = bulkSearch.value.trim().toLowerCase();
+
+      return bulkStudents.filter((student) => {
+        const sectionOk = !selectedSection || student.section === selectedSection;
+        if (!sectionOk) return false;
+        if (!searchText) return true;
+
+        const haystack = [student.id, student.fullName, student.section].join(" ").toLowerCase();
+        return haystack.includes(searchText);
+      });
+    }
+
+    function getSelectedBulkIds() {
+      return Array.from(bulkStudentList.querySelectorAll("input[data-student-id]:checked")).map((input) => input.dataset.studentId);
+    }
+
+    function updateBulkCount() {
+      const selectedCount = getSelectedBulkIds().length;
+      bulkCount.textContent = selectedCount + " selected";
+    }
+
+    function renderBulkStudents() {
+      const visibleStudents = getVisibleBulkStudents();
+      bulkStudentList.innerHTML = "";
+      bulkStatus.textContent = visibleStudents.length + " student" + (visibleStudents.length === 1 ? "" : "s") + " shown";
+
+      if (!visibleStudents.length) {
+        const empty = document.createElement("div");
+        empty.className = "student-check";
+        empty.textContent = "No students found for this filter.";
+        bulkStudentList.appendChild(empty);
+        updateBulkCount();
+        return;
+      }
+
+      visibleStudents.forEach((student) => {
+        const label = document.createElement("label");
+        label.className = "student-check";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.dataset.studentId = student.id;
+        checkbox.addEventListener("change", updateBulkCount);
+
+        const text = document.createElement("div");
+        const name = document.createElement("strong");
+        name.textContent = student.fullName || student.id;
+        const meta = document.createElement("span");
+        meta.textContent = (student.section || "No section") + " • " + student.id;
+
+        text.appendChild(name);
+        text.appendChild(meta);
+        label.appendChild(checkbox);
+        label.appendChild(text);
+        bulkStudentList.appendChild(label);
+      });
+
+      updateBulkCount();
+    }
+
+    function populateBulkSections() {
+      const currentValue = bulkSectionFilter.value;
+      const sections = Array.from(new Set(bulkStudents.map((student) => student.section).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+
+      bulkSectionFilter.innerHTML = "";
+      const allOption = document.createElement("option");
+      allOption.value = "";
+      allOption.textContent = "All Sections";
+      bulkSectionFilter.appendChild(allOption);
+
+      sections.forEach((section) => {
+        const option = document.createElement("option");
+        option.value = section;
+        option.textContent = section;
+        bulkSectionFilter.appendChild(option);
+      });
+
+      if (sections.includes(currentValue)) {
+        bulkSectionFilter.value = currentValue;
+      }
+    }
+
+    async function loadBulkStudents(force = false) {
+      if (bulkLoaded && !force) {
+        populateBulkSections();
+        renderBulkStudents();
+        return;
+      }
+
+      bulkStatus.textContent = "Loading students...";
+      bulkStudentList.innerHTML = "";
+
+      const snapshot = await getDocs(collection(db, "students"));
+      bulkStudents = snapshot.docs.map((studentDoc) => {
+        const data = studentDoc.data() || {};
+        return {
+          id: studentDoc.id,
+          fullName: data.fullName || "",
+          section: data.section || "",
+          gender: data.gender || data.sex || ""
+        };
+      }).sort(sortStudentsBySectionName);
+
+      bulkLoaded = true;
+      populateBulkSections();
+      renderBulkStudents();
+    }
+
+    async function openBulkModal() {
+      if (!auth.currentUser) {
+        showResult("error", "Please sign in first before using Bulk Recitation.");
+        return;
+      }
+
+      unlockFeedback();
+      bulkPoints.value = pointsInput.value || "1";
+      bulkModal.classList.add("open");
+
+      try {
+        await loadBulkStudents(false);
+      } catch (error) {
+        bulkStatus.textContent = "Failed to load students.";
+        bulkStudentList.innerHTML = "";
+        showResult("error", "Bulk student load failed:\n" + error.message);
+      }
+    }
+
+    function closeBulkModal() {
+      if (bulkBusy) return;
+      bulkModal.classList.remove("open");
+    }
+
+    function selectVisibleBulkStudents() {
+      bulkStudentList.querySelectorAll("input[data-student-id]").forEach((input) => {
+        input.checked = true;
+      });
+      updateBulkCount();
+    }
+
+    function clearBulkSelection() {
+      bulkStudentList.querySelectorAll("input[data-student-id]").forEach((input) => {
+        input.checked = false;
+      });
+      updateBulkCount();
+    }
+
+    async function recordBulkRecitation() {
+      if (bulkBusy) return;
+
+      if (!auth.currentUser) {
+        showResult("error", "Please sign in first before recording.");
+        return;
+      }
+
+      const selectedIds = getSelectedBulkIds();
+      const points = Number(bulkPoints.value);
+      const term = getTermInfo();
+      const termField = "termTotals." + term.id;
+      const activity = getDefaultActivityName() + " - Bulk";
+
+      if (!selectedIds.length) {
+        bulkStatus.textContent = "Please select at least one student.";
+        return;
+      }
+
+      if (!Number.isFinite(points) || points <= 0) {
+        bulkStatus.textContent = "Invalid points.";
+        return;
+      }
+
+      const confirmed = confirm("Record +" + points + " point" + (points === 1 ? "" : "s") + " to " + selectedIds.length + " student" + (selectedIds.length === 1 ? "" : "s") + "?");
+      if (!confirmed) return;
+
+      const studentMap = new Map(bulkStudents.map((student) => [student.id, student]));
+      const selectedStudents = selectedIds.map((id) => studentMap.get(id)).filter(Boolean);
+
+      bulkBusy = true;
+      recordBulkButton.disabled = true;
+      cancelBulkButton.disabled = true;
+      closeBulkButton.disabled = true;
+      bulkStatus.textContent = "Recording bulk recitation...";
+
+      try {
+        const chunkSize = 200;
+        for (let start = 0; start < selectedStudents.length; start += chunkSize) {
+          const chunk = selectedStudents.slice(start, start + chunkSize);
+          const batch = writeBatch(db);
+
+          chunk.forEach((student) => {
+            const studentRef = doc(db, "students", student.id);
+            const logRef = doc(collection(db, "recitationLogs"));
+
+            batch.update(studentRef, {
+              totalPoints: increment(points),
+              [termField]: increment(points),
+              latestAt: serverTimestamp(),
+              latestPoints: points,
+              latestTermId: term.id,
+              latestTermName: term.name,
+              updatedAt: serverTimestamp()
+            });
+
+            batch.set(logRef, {
+              studentId: student.id,
+              fullName: student.fullName || "",
+              section: student.section || "",
+              points,
+              activity,
+              termId: term.id,
+              termName: term.name,
+              schoolYear: term.schoolYear,
+              bulk: true,
+              createdAt: serverTimestamp()
+            });
+          });
+
+          await batch.commit();
+        }
+
+        showResult("success", "Bulk recorded: +" + points + " to " + selectedStudents.length + " student" + (selectedStudents.length === 1 ? "" : "s") + ".\n" + term.name + " | Leaderboard updates live.");
+        addRecent("Bulk Recitation: " + selectedStudents.length + " student" + (selectedStudents.length === 1 ? "" : "s") + " +" + points + "\n" + term.name);
+        clearBulkSelection();
+        closeBulkModal();
+        successFeedback();
+      } catch (error) {
+        showResult("error", "Bulk save failed:\n" + error.message);
+        bulkStatus.textContent = "Bulk save failed.";
+        errorFeedback();
+      } finally {
+        bulkBusy = false;
+        recordBulkButton.disabled = false;
+        cancelBulkButton.disabled = false;
+        closeBulkButton.disabled = false;
+      }
     }
 
     async function recordStudent(studentIdValue) {
@@ -704,6 +1211,17 @@
     });
 
     startButton.addEventListener("click", startScanner);
+    bulkButton.addEventListener("click", openBulkModal);
+    closeBulkButton.addEventListener("click", closeBulkModal);
+    cancelBulkButton.addEventListener("click", closeBulkModal);
+    bulkModal.addEventListener("click", (event) => {
+      if (event.target === bulkModal) closeBulkModal();
+    });
+    bulkSectionFilter.addEventListener("change", renderBulkStudents);
+    bulkSearch.addEventListener("input", renderBulkStudents);
+    selectVisibleButton.addEventListener("click", selectVisibleBulkStudents);
+    clearSelectedButton.addEventListener("click", clearBulkSelection);
+    recordBulkButton.addEventListener("click", recordBulkRecitation);
     signInButton.addEventListener("click", signInTeacher);
     signOutButton.addEventListener("click", signOutTeacher);
     teacherPassword.addEventListener("keydown", (event) => {
@@ -730,6 +1248,9 @@
       if (signedIn) {
         showAuth("success", "Signed in: " + user.email);
       } else {
+        closeBulkModal();
+        bulkLoaded = false;
+        bulkStudents = [];
         showAuth("queued", "Sign in required before scanning.");
       }
     });

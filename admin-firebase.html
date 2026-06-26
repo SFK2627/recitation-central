@@ -485,7 +485,43 @@
     }
 
     @media (max-width: 640px) {
-      .hero,
+      main {
+        padding: 10px;
+      }
+
+      .hero {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .eyebrow {
+        padding: 4px 8px;
+        font-size: 10px;
+      }
+
+      h1 {
+        margin-top: 7px;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .credit {
+        margin-top: 6px;
+        font-size: 9px;
+      }
+
+      .heart-menu-button {
+        width: 38px;
+        min-height: 38px;
+        font-size: 18px;
+      }
+
+      .heart-menu {
+        top: 44px;
+      }
+
       .auth-row,
       .pin-row,
       .filter-row,

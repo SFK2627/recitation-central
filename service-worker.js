@@ -1,4 +1,4 @@
-const CACHE_NAME = "recitation-firebase-v15-admin-heart-menu";
+const CACHE_NAME = "recitation-central-admin-compact-header-v1";
 const APP_SHELL = [
   "./",
   "./index.html",

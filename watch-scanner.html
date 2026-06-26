@@ -182,21 +182,22 @@
     }
 
     .feedback {
-      position: absolute;
-      left: 7px;
-      right: 7px;
+      position: fixed;
+      left: max(7px, env(safe-area-inset-left));
+      right: max(7px, env(safe-area-inset-right));
       top: 50%;
       transform: translateY(-50%) scale(.98);
       display: none;
-      z-index: 10;
+      z-index: 60;
       border-radius: 18px;
-      padding: 10px 8px;
+      padding: 12px 8px;
       text-align: center;
-      background: rgba(8, 8, 8, .94);
+      background: rgba(3, 7, 4, .97);
       border: 2px solid var(--green);
-      box-shadow: 0 18px 48px rgba(0,0,0,.55);
+      box-shadow: 0 18px 48px rgba(0,0,0,.7), 0 0 0 999px rgba(0,0,0,.28);
       opacity: 0;
       transition: opacity 120ms ease, transform 120ms ease;
+      pointer-events: none;
     }
 
     .feedback.show {
@@ -208,9 +209,10 @@
     .feedback.error { border-color: var(--red); }
     .feedback.wait { border-color: var(--orange); }
     .feedback.saved { border-color: var(--gold); }
+    .feedback.saving { border-color: #60a5fa; background: rgba(4, 13, 27, .97); }
 
     .fb-title {
-      font-size: clamp(16px, 6.6vw, 24px);
+      font-size: clamp(18px, 7.2vw, 27px);
       font-weight: 950;
       letter-spacing: -0.04em;
       line-height: 1;
@@ -218,7 +220,7 @@
 
     .fb-name {
       margin-top: 6px;
-      font-size: clamp(13px, 5vw, 19px);
+      font-size: clamp(14px, 5.6vw, 21px);
       font-weight: 950;
       line-height: 1.05;
       max-height: 2.1em;
@@ -565,12 +567,13 @@
       fbTotal.textContent = totalText || "";
       feedback.style.display = "block";
       requestAnimationFrame(() => feedback.classList.add("show"));
+      const holdMs = kind === "saving" ? 900 : kind === "error" ? 3200 : 2800;
       feedbackTimer = window.setTimeout(() => {
         feedback.classList.remove("show");
         window.setTimeout(() => {
           feedback.style.display = "none";
         }, 150);
-      }, kind === "error" ? 2300 : 1500);
+      }, holdMs);
     }
 
     function cleanupLocks() {
@@ -607,7 +610,7 @@
       });
       saveQueue(queue);
       setStatus("Queued: " + queue.length);
-      showFeedback("saved", "📦 SAVED", studentId, "+" + points + " QUEUED", "WILL SYNC LATER");
+      showFeedback("saved", "📦 SAVED LOCAL", studentId, "+" + points + " QUEUED", "WILL SYNC LATER");
     }
 
     async function writeScan(studentId, points, activity, term, extraLog = {}) {
@@ -724,11 +727,12 @@
 
       recentLocks.set(lockKey, Date.now() + SCAN_COOLDOWN_MS);
       setStatus("Saving " + studentId + "...");
+      showFeedback("saving", "⏳ SAVING", studentId, "+" + points + " POINT" + (points === 1 ? "" : "S"), "PLEASE WAIT");
 
       try {
         const saved = await writeScan(studentId, points, activity, term);
         setStatus("Recorded. Ready.");
-        showFeedback("", "✅ RECORDED", saved.fullName, "+" + points + " POINT" + (points === 1 ? "" : "S"), "TOTAL: " + saved.total);
+        showFeedback("", "✅ POINT ADDED", saved.fullName, "+" + points + " POINT" + (points === 1 ? "" : "S"), "TOTAL: " + saved.total);
         successFeedback();
         if (navigator.onLine) syncQueue().catch(() => {});
       } catch (error) {

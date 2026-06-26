@@ -1,4 +1,4 @@
-const CACHE_NAME = "recitation-firebase-v9-watch-scanner";
+const CACHE_NAME = "recitation-firebase-v11-watch-noscroll";
 const APP_SHELL = [
   "./",
   "./index.html",

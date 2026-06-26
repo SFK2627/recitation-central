@@ -25,17 +25,22 @@
       margin: 0;
       width: 100%;
       height: 100%;
-      overflow: hidden;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden !important;
       background: var(--bg);
       color: white;
       font-family: Arial, Helvetica, sans-serif;
       overscroll-behavior: none;
       touch-action: manipulation;
+      position: fixed;
+      inset: 0;
     }
 
     body {
       position: fixed;
       inset: 0;
+      overflow: hidden !important;
     }
 
     button, input {
@@ -45,11 +50,14 @@
     .screen {
       position: fixed;
       inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      max-height: 100dvh;
       display: grid;
-      grid-template-rows: auto auto minmax(0, 1fr) auto;
-      gap: clamp(4px, 1.5vh, 8px);
-      padding: max(5px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
-      overflow: hidden;
+      grid-template-rows: 26px 36px minmax(0, 1fr) 38px;
+      gap: 3px;
+      padding: max(3px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+      overflow: hidden !important;
       background:
         radial-gradient(circle at 20% 0%, rgba(255, 212, 59, .18), transparent 35%),
         #050505;
@@ -59,8 +67,9 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      gap: 6px;
-      min-height: 26px;
+      gap: 4px;
+      min-height: 0;
+      overflow: hidden !important;
     }
 
     .brand {
@@ -78,13 +87,7 @@
     }
 
     .subtitle {
-      margin-top: 2px;
-      color: var(--muted);
-      font-size: clamp(8px, 3vw, 11px);
-      font-weight: 800;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      display: none;
     }
 
     .status-pill {
@@ -101,8 +104,9 @@
     .points-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 5px;
-      min-height: 42px;
+      gap: 3px;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .point-btn, .mini-btn, .start-btn, .sign-btn {
@@ -113,7 +117,8 @@
     }
 
     .point-btn {
-      min-height: clamp(38px, 10vh, 50px);
+      height: 36px;
+      min-height: 0;
       background: #1c1c1c;
       color: white;
       border: 1px solid var(--line);
@@ -139,11 +144,18 @@
     }
 
     #reader {
-      width: min(100%, 56vh, 230px);
+      width: min(100%, 100%, 210px);
+      height: min(100%, 210px);
       aspect-ratio: 1 / 1;
-      overflow: hidden;
-      border-radius: 16px;
+      overflow: hidden !important;
+      border-radius: 14px;
       background: #000;
+    }
+
+    #reader > div {
+      max-width: 100% !important;
+      max-height: 100% !important;
+      overflow: hidden !important;
     }
 
     #reader video, #reader canvas {
@@ -183,14 +195,16 @@
 
     .feedback {
       position: fixed;
-      left: max(7px, env(safe-area-inset-left));
-      right: max(7px, env(safe-area-inset-right));
+      left: max(6px, env(safe-area-inset-left));
+      right: max(6px, env(safe-area-inset-right));
       top: 50%;
+      max-height: calc(100dvh - 16px);
+      overflow: hidden !important;
       transform: translateY(-50%) scale(.98);
       display: none;
       z-index: 60;
       border-radius: 18px;
-      padding: 12px 8px;
+      padding: 9px 7px;
       text-align: center;
       background: rgba(3, 7, 4, .97);
       border: 2px solid var(--green);
@@ -212,15 +226,15 @@
     .feedback.saving { border-color: #60a5fa; background: rgba(4, 13, 27, .97); }
 
     .fb-title {
-      font-size: clamp(18px, 7.2vw, 27px);
+      font-size: clamp(16px, 6.5vw, 24px);
       font-weight: 950;
       letter-spacing: -0.04em;
       line-height: 1;
     }
 
     .fb-name {
-      margin-top: 6px;
-      font-size: clamp(14px, 5.6vw, 21px);
+      margin-top: 5px;
+      font-size: clamp(13px, 5.2vw, 19px);
       font-weight: 950;
       line-height: 1.05;
       max-height: 2.1em;
@@ -228,9 +242,9 @@
     }
 
     .fb-points {
-      margin-top: 5px;
+      margin-top: 4px;
       color: var(--gold);
-      font-size: clamp(15px, 6vw, 22px);
+      font-size: clamp(14px, 5.5vw, 20px);
       font-weight: 950;
       line-height: 1;
     }
@@ -246,13 +260,15 @@
     .bottom {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto auto;
-      gap: 5px;
+      gap: 3px;
       align-items: center;
-      min-height: 42px;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .start-btn {
-      min-height: clamp(38px, 10vh, 50px);
+      height: 38px;
+      min-height: 0;
       background: var(--green);
       color: #04130a;
       font-size: clamp(14px, 5vw, 20px);
@@ -264,8 +280,9 @@
     }
 
     .mini-btn {
-      min-height: clamp(38px, 10vh, 50px);
-      min-width: clamp(42px, 16vw, 58px);
+      height: 38px;
+      min-height: 0;
+      min-width: clamp(40px, 15vw, 54px);
       padding: 0 8px;
       background: #171717;
       color: white;
@@ -280,11 +297,14 @@
     .auth-screen {
       position: fixed;
       inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      max-height: 100dvh;
       z-index: 30;
       display: grid;
       align-content: center;
-      gap: 8px;
-      padding: 12px;
+      gap: 5px;
+      padding: 8px;
       background:
         radial-gradient(circle at 20% 0%, rgba(255, 212, 59, .18), transparent 35%),
         #050505;
@@ -344,6 +364,45 @@
       font-weight: 800;
       text-align: center;
       white-space: pre-line;
+    }
+
+
+
+    /* Hard no-scroll guard for watch browsers and the html5-qrcode generated UI. */
+    body, .screen, .scanner-wrap, #reader, #reader * {
+      scrollbar-width: none !important;
+    }
+    body::-webkit-scrollbar,
+    .screen::-webkit-scrollbar,
+    .scanner-wrap::-webkit-scrollbar,
+    #reader::-webkit-scrollbar,
+    #reader *::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    @media (max-height: 320px) {
+      .screen { grid-template-rows: 22px 32px minmax(0, 1fr) 34px; gap: 2px; padding: 3px; }
+      .title { font-size: 13px; }
+      .status-pill { font-size: 9px; padding: 3px 5px; }
+      .point-btn { height: 32px; border-radius: 10px; font-size: 15px; }
+      .start-btn, .mini-btn { height: 34px; border-radius: 10px; font-size: 12px; }
+      .scanner-wrap { border-radius: 14px; }
+      #reader { width: min(100%, 170px); height: min(100%, 170px); }
+      .feedback { padding: 7px 6px; border-radius: 14px; }
+      .fb-title { font-size: clamp(15px, 6vw, 21px); }
+      .fb-name { font-size: clamp(12px, 5vw, 17px); }
+      .fb-points { font-size: clamp(13px, 5.3vw, 18px); }
+      .fb-total { font-size: clamp(10px, 4vw, 13px); }
+    }
+
+    @media (max-height: 220px) {
+      .screen { grid-template-rows: 0px 30px minmax(0, 1fr) 32px; }
+      .topbar { display: none; }
+      .point-btn { height: 30px; }
+      .start-btn, .mini-btn { height: 32px; }
+      #reader { width: min(100%, 145px); height: min(100%, 145px); }
+      .scan-placeholder strong { font-size: 18px; }
+      .scan-placeholder span { display: none; }
     }
 
     @media (max-height: 250px) {
@@ -408,6 +467,10 @@
   </main>
 
   <script type="module">
+    window.addEventListener("scroll", () => window.scrollTo(0, 0), { passive: true });
+    document.addEventListener("touchmove", (event) => event.preventDefault(), { passive: false });
+    document.addEventListener("wheel", (event) => event.preventDefault(), { passive: false });
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
       getAuth,
@@ -460,6 +523,8 @@
     const termPill = document.getElementById("termPill");
 
     const QUEUE_KEY = "recitationWatchPendingQueueV1";
+    const STUDENT_CACHE_KEY = "recitationWatchStudentCacheV1";
+    const studentCache = new Map();
     const SCAN_COOLDOWN_MS = 5500;
     const SCANNER_PAUSE_MS = 450;
     let selectedPoints = 1;
@@ -567,7 +632,8 @@
       fbTotal.textContent = totalText || "";
       feedback.style.display = "block";
       requestAnimationFrame(() => feedback.classList.add("show"));
-      const holdMs = kind === "saving" ? 900 : kind === "error" ? 3200 : 2800;
+      const isClear = /CLEAR|No pending/i.test(title + " " + name);
+      const holdMs = kind === "saving" ? 1000 : kind === "error" ? 3600 : isClear ? 2600 : 4300;
       feedbackTimer = window.setTimeout(() => {
         feedback.classList.remove("show");
         window.setTimeout(() => {
@@ -587,6 +653,59 @@
       return studentId.toUpperCase() + "::" + String(points);
     }
 
+    function loadStudentCache() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STUDENT_CACHE_KEY) || "{}");
+        Object.entries(saved).forEach(([id, data]) => {
+          if (id) studentCache.set(String(id).toUpperCase(), data || {});
+        });
+      } catch (error) {}
+    }
+
+    function saveStudentCache() {
+      const plain = {};
+      studentCache.forEach((value, key) => {
+        plain[key] = value;
+      });
+      localStorage.setItem(STUDENT_CACHE_KEY, JSON.stringify(plain));
+    }
+
+    function cacheStudent(studentId, data) {
+      const id = normalizeStudentId(studentId);
+      if (!id) return;
+      studentCache.set(id.toUpperCase(), {
+        fullName: data.fullName || data.name || id,
+        section: data.section || "",
+        totalPoints: Number(data.totalPoints || 0),
+        updatedAtMs: Date.now()
+      });
+      saveStudentCache();
+    }
+
+    function getCachedStudent(studentId) {
+      const id = normalizeStudentId(studentId);
+      if (!id) return null;
+      return studentCache.get(id.toUpperCase()) || null;
+    }
+
+    function getDisplayName(studentId) {
+      const cached = getCachedStudent(studentId);
+      return (cached && cached.fullName) ? cached.fullName : normalizeStudentId(studentId);
+    }
+
+    async function fetchStudentForDisplay(studentId) {
+      const id = normalizeStudentId(studentId);
+      if (!id || !auth.currentUser || !navigator.onLine) return getCachedStudent(id);
+      try {
+        const snap = await getDoc(doc(db, "students", id));
+        if (snap.exists()) {
+          cacheStudent(id, snap.data() || {});
+          return getCachedStudent(id);
+        }
+      } catch (error) {}
+      return getCachedStudent(id);
+    }
+
     function loadQueue() {
       try {
         return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
@@ -601,8 +720,10 @@
 
     function queueScan(studentId, points) {
       const queue = loadQueue();
+      const displayName = getDisplayName(studentId);
       queue.push({
         studentId,
+        fullName: displayName,
         points,
         activity: getDefaultActivityName(),
         term: getTermInfo(),
@@ -610,7 +731,7 @@
       });
       saveQueue(queue);
       setStatus("Queued: " + queue.length);
-      showFeedback("saved", "📦 SAVED LOCAL", studentId, "+" + points + " QUEUED", "WILL SYNC LATER");
+      showFeedback("saved", "📦 SAVED LOCAL", displayName, "+" + points + " POINT" + (points === 1 ? "" : "S"), "PENDING SYNC");
     }
 
     async function writeScan(studentId, points, activity, term, extraLog = {}) {
@@ -626,6 +747,7 @@
         }
 
         const student = studentSnap.data() || {};
+        cacheStudent(studentId, student);
         const oldTotal = Number(student.totalPoints || 0);
         const newTotal = oldTotal + points;
         result = {
@@ -662,26 +784,47 @@
       return result;
     }
 
+    function wait(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
     async function syncQueue() {
       if (!auth.currentUser) return;
       let queue = loadQueue();
       if (!queue.length) {
         setStatus("No pending sync.");
-        showFeedback("saved", "✅ CLEAR", "No pending queue", "", "");
+        showFeedback("saved", "✅ QUEUE CLEAR", "No pending scans", "", "READY");
         return;
       }
 
       setStatus("Syncing " + queue.length + "...");
       const remaining = [];
+      let syncedCount = 0;
+      let lastSaved = null;
+
       for (const item of queue) {
         try {
-          await writeScan(
+          const pointsToAdd = Number(item.points || 1);
+          const saved = await writeScan(
             item.studentId,
-            Number(item.points || 1),
+            pointsToAdd,
             item.activity || getDefaultActivityName(),
             item.term || getTermInfo(),
             { syncedFromWatchQueue: true, queuedAtMs: item.queuedAt || null }
           );
+          syncedCount += 1;
+          lastSaved = { ...saved, points: pointsToAdd, fallbackName: item.fullName || item.studentId };
+
+          // For small watch screens, show the actual student and points while the queue is clearing.
+          showFeedback(
+            "",
+            "✅ POINT ADDED",
+            saved.fullName || item.fullName || item.studentId,
+            "+" + pointsToAdd + " POINT" + (pointsToAdd === 1 ? "" : "S"),
+            "TOTAL: " + saved.total
+          );
+          successFeedback();
+          await wait(900);
         } catch (error) {
           remaining.push(item);
         }
@@ -690,10 +833,30 @@
       saveQueue(remaining);
       if (remaining.length) {
         setStatus("Pending: " + remaining.length);
-        showFeedback("wait", "⚠️ PARTIAL", "Some scans stayed queued", "", "PENDING: " + remaining.length);
+        if (lastSaved) {
+          showFeedback(
+            "wait",
+            "⚠️ PARTIAL SYNC",
+            lastSaved.fullName || lastSaved.fallbackName,
+            "+" + lastSaved.points + " POINT" + (lastSaved.points === 1 ? "" : "S"),
+            "PENDING: " + remaining.length
+          );
+        } else {
+          showFeedback("wait", "⚠️ PARTIAL", "Some scans stayed queued", "", "PENDING: " + remaining.length);
+        }
       } else {
-        setStatus("Synced.");
-        showFeedback("saved", "✅ SYNCED", "All pending scans", "", "");
+        setStatus("Synced " + syncedCount + ".");
+        if (lastSaved) {
+          showFeedback(
+            "",
+            "✅ SYNCED + ADDED",
+            lastSaved.fullName || lastSaved.fallbackName,
+            "+" + lastSaved.points + " POINT" + (lastSaved.points === 1 ? "" : "S"),
+            "TOTAL: " + lastSaved.total
+          );
+        } else {
+          showFeedback("saved", "✅ SYNCED", "All pending scans", "", "READY");
+        }
         successFeedback();
       }
     }
@@ -726,8 +889,10 @@
       }
 
       recentLocks.set(lockKey, Date.now() + SCAN_COOLDOWN_MS);
-      setStatus("Saving " + studentId + "...");
-      showFeedback("saving", "⏳ SAVING", studentId, "+" + points + " POINT" + (points === 1 ? "" : "S"), "PLEASE WAIT");
+      const displayData = await fetchStudentForDisplay(studentId);
+      const displayName = (displayData && displayData.fullName) ? displayData.fullName : studentId;
+      setStatus("Saving " + displayName + "...");
+      showFeedback("saving", "⏳ SAVING", displayName, "+" + points + " POINT" + (points === 1 ? "" : "S"), "PLEASE WAIT");
 
       try {
         const saved = await writeScan(studentId, points, activity, term);
@@ -886,6 +1051,7 @@
       }
     });
 
+    loadStudentCache();
     updateTermPill();
     updatePointButtons();
     setInterval(updateTermPill, 60000);

@@ -108,6 +108,106 @@
       white-space: nowrap;
     }
 
+
+    .header-menu-wrap {
+      position: relative;
+      align-self: start;
+      justify-self: end;
+    }
+
+    .heart-menu-button {
+      width: 42px;
+      min-height: 42px;
+      border: 1px solid rgba(255, 212, 59, 0.40);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.10);
+      color: var(--yellow);
+      font-size: 20px;
+      line-height: 1;
+      box-shadow: none;
+    }
+
+    .heart-menu-button:active,
+    .heart-menu-button[aria-expanded="true"] {
+      background: var(--yellow);
+      color: var(--black);
+    }
+
+    .heart-menu {
+      position: absolute;
+      top: 50px;
+      right: 0;
+      z-index: 60;
+      width: min(320px, calc(100vw - 28px));
+      border: 1px solid rgba(255, 212, 59, 0.32);
+      border-radius: 16px;
+      padding: 10px;
+      background: rgba(17, 24, 39, 0.98);
+      box-shadow: 0 20px 44px rgba(15, 23, 42, 0.30);
+      color: white;
+    }
+
+    .heart-menu[hidden] {
+      display: none;
+    }
+
+    .menu-home-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      border: 1px solid rgba(255, 212, 59, 0.30);
+      border-radius: 12px;
+      color: var(--yellow);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .heart-menu .auth-panel {
+      margin: 10px 0 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .heart-menu .auth-panel .panel-title {
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    .heart-menu .auth-row {
+      grid-template-columns: 1fr;
+      gap: 7px;
+    }
+
+    .heart-menu .auth-panel.signed-in .auth-row {
+      grid-template-columns: 1fr;
+    }
+
+    .heart-menu .auth-panel label {
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .heart-menu .auth-panel input,
+    .heart-menu .auth-panel button {
+      min-height: 40px;
+      font-size: 14px;
+    }
+
+    .heart-menu .auth-panel input {
+      border-color: rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    .heart-menu .auth-panel button.secondary {
+      border-color: rgba(255, 212, 59, 0.35);
+      background: rgba(255, 255, 255, 0.10);
+      color: var(--yellow);
+    }
+
     .credit {
       margin-top: 8px;
       color: rgba(255, 212, 59, 0.82);
@@ -416,28 +516,28 @@
         <h1>Firebase Admin</h1>
         <div class="credit">Developed by Mr. John Rey Tubello (Sir JR)</div>
       </div>
-      <div class="hero-actions">
-        <a class="home-link" href="firebase-index.html">Home</a>
-        <div class="live-pill">Live Firestore</div>
+      <div class="header-menu-wrap">
+        <button id="heartMenuButton" class="heart-menu-button" type="button" aria-label="Open admin menu" aria-expanded="false">♥</button>
+        <div id="heartMenu" class="heart-menu" hidden>
+          <a class="menu-home-link" href="firebase-index.html">Home</a>
+          <section id="authPanel" class="auth-panel">
+            <p class="panel-title">Teacher Sign In</p>
+            <div class="auth-row">
+              <div class="auth-field">
+                <label for="teacherEmail">Email</label>
+                <input id="teacherEmail" type="email" autocomplete="username" placeholder="Teacher email">
+              </div>
+              <div class="auth-field">
+                <label for="teacherPassword">Password</label>
+                <input id="teacherPassword" type="password" autocomplete="current-password" placeholder="Password">
+              </div>
+              <button id="signInButton" type="button">Sign In</button>
+              <button id="signOutButton" class="secondary" type="button" hidden>Sign Out</button>
+            </div>
+          </section>
+        </div>
       </div>
     </header>
-
-    <section id="authPanel" class="panel auth-panel">
-      <p class="panel-title">Teacher Sign In</p>
-      <div class="auth-row">
-        <div class="auth-field">
-          <label for="teacherEmail">Email</label>
-          <input id="teacherEmail" type="email" autocomplete="username" placeholder="Teacher email">
-        </div>
-        <div class="auth-field">
-          <label for="teacherPassword">Password</label>
-          <input id="teacherPassword" type="password" autocomplete="current-password" placeholder="Password">
-        </div>
-        <button id="signInButton" type="button">Sign In</button>
-        <button id="signOutButton" class="secondary" type="button" hidden>Sign Out</button>
-      </div>
-
-    </section>
 
     <div id="result" class="result"></div>
 
@@ -567,6 +667,8 @@
     const teacherPassword = document.getElementById("teacherPassword");
     const signInButton = document.getElementById("signInButton");
     const signOutButton = document.getElementById("signOutButton");
+    const heartMenuButton = document.getElementById("heartMenuButton");
+    const heartMenu = document.getElementById("heartMenu");
     const adminPanel = document.getElementById("adminPanel");
     const resultBox = document.getElementById("result");
     const sectionFilter = document.getElementById("sectionFilter");
@@ -595,6 +697,15 @@
     let allSections = [];
     let unsubscribeStudents = null;
     let unsubscribeSections = null;
+
+    function setHeartMenu(open) {
+      heartMenu.hidden = !open;
+      heartMenuButton.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+
+    function toggleHeartMenu() {
+      setHeartMenu(heartMenu.hidden);
+    }
 
     function showResult(type, message) {
       resultBox.className = "result " + type;
@@ -1162,6 +1273,7 @@
 
       try {
         await signInWithEmailAndPassword(auth, email, password);
+        setHeartMenu(false);
         teacherPassword.value = "";
       } catch (error) {
         showResult("error", "Sign in failed:\n" + error.message);
@@ -1176,6 +1288,7 @@
       unsubscribeStudents = null;
       unsubscribeSections = null;
       adminPanel.hidden = true;
+      setHeartMenu(false);
       await signOut(auth);
     }
 
@@ -1195,6 +1308,23 @@
         hideResult();
         adminPanel.hidden = true;
       }
+    });
+
+    heartMenuButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleHeartMenu();
+    });
+
+    heartMenu.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    document.addEventListener("click", () => {
+      setHeartMenu(false);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") setHeartMenu(false);
     });
 
     signInButton.addEventListener("click", signInTeacher);

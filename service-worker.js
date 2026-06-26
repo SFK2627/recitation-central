@@ -1,10 +1,11 @@
-const CACHE_NAME = "recitation-firebase-v8-bulk-recitation";
+const CACHE_NAME = "recitation-firebase-v9-watch-scanner";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./view.html",
   "./firebase-index.html",
   "./scanner-firebase.html",
+  "./watch-scanner.html",
   "./view-firebase.html",
   "./admin-firebase.html",
   "./manifest.json",

@@ -26,5 +26,20 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Watch Scanner",
+      "short_name": "Watch",
+      "description": "Compact no-scroll QR scanner",
+      "url": "watch-scanner.html",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }

@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050505">
+  <title>Watch Scanner - Recitation Central</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    :root {
+      --bg: #050505;
+      --panel: #111111;
+      --gold: #ffd43b;
+      --muted: #a3a3a3;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f59e0b;
+      --line: rgba(255,255,255,.16);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+    }
+
+    button, input {
+      font-family: inherit;
+    }
+
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      gap: clamp(4px, 1.5vh, 8px);
+      padding: max(5px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(255, 212, 59, .18), transparent 35%),
+        #050505;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+      min-height: 26px;
+    }
+
+    .brand {
+      min-width: 0;
+      line-height: 1;
+    }
+
+    .title {
+      font-size: clamp(13px, 5.2vw, 18px);
+      font-weight: 950;
+      letter-spacing: -0.04em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .subtitle {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: clamp(8px, 3vw, 11px);
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 7px;
+      background: rgba(255,255,255,.07);
+      color: var(--gold);
+      font-size: clamp(9px, 3.2vw, 11px);
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .points-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 5px;
+      min-height: 42px;
+    }
+
+    .point-btn, .mini-btn, .start-btn, .sign-btn {
+      border: 0;
+      border-radius: 12px;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .point-btn {
+      min-height: clamp(38px, 10vh, 50px);
+      background: #1c1c1c;
+      color: white;
+      border: 1px solid var(--line);
+      font-size: clamp(15px, 6vw, 22px);
+    }
+
+    .point-btn.active {
+      background: var(--gold);
+      color: #111;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(255, 212, 59, .16);
+    }
+
+    .scanner-wrap {
+      position: relative;
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 18px;
+      background: #0a0a0a;
+      border: 1px solid var(--line);
+    }
+
+    #reader {
+      width: min(100%, 56vh, 230px);
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #000;
+    }
+
+    #reader video, #reader canvas {
+      border-radius: 16px !important;
+      object-fit: cover !important;
+    }
+
+    #reader__scan_region, #reader__dashboard_section_csr, #reader__dashboard_section_swaplink, #reader__status_span {
+      display: none !important;
+    }
+
+    .scan-placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 10px;
+      pointer-events: none;
+    }
+
+    .scan-placeholder strong {
+      display: block;
+      color: var(--gold);
+      font-size: clamp(20px, 8vw, 30px);
+      line-height: .95;
+      letter-spacing: -0.06em;
+    }
+
+    .scan-placeholder span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: clamp(9px, 3.3vw, 12px);
+      font-weight: 800;
+    }
+
+    .feedback {
+      position: absolute;
+      left: 7px;
+      right: 7px;
+      top: 50%;
+      transform: translateY(-50%) scale(.98);
+      display: none;
+      z-index: 10;
+      border-radius: 18px;
+      padding: 10px 8px;
+      text-align: center;
+      background: rgba(8, 8, 8, .94);
+      border: 2px solid var(--green);
+      box-shadow: 0 18px 48px rgba(0,0,0,.55);
+      opacity: 0;
+      transition: opacity 120ms ease, transform 120ms ease;
+    }
+
+    .feedback.show {
+      display: block;
+      opacity: 1;
+      transform: translateY(-50%) scale(1);
+    }
+
+    .feedback.error { border-color: var(--red); }
+    .feedback.wait { border-color: var(--orange); }
+    .feedback.saved { border-color: var(--gold); }
+
+    .fb-title {
+      font-size: clamp(16px, 6.6vw, 24px);
+      font-weight: 950;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .fb-name {
+      margin-top: 6px;
+      font-size: clamp(13px, 5vw, 19px);
+      font-weight: 950;
+      line-height: 1.05;
+      max-height: 2.1em;
+      overflow: hidden;
+    }
+
+    .fb-points {
+      margin-top: 5px;
+      color: var(--gold);
+      font-size: clamp(15px, 6vw, 22px);
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .fb-total {
+      margin-top: 4px;
+      color: #e5e7eb;
+      font-size: clamp(11px, 4vw, 15px);
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .bottom {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 5px;
+      align-items: center;
+      min-height: 42px;
+    }
+
+    .start-btn {
+      min-height: clamp(38px, 10vh, 50px);
+      background: var(--green);
+      color: #04130a;
+      font-size: clamp(14px, 5vw, 20px);
+    }
+
+    .start-btn.stop {
+      background: var(--red);
+      color: white;
+    }
+
+    .mini-btn {
+      min-height: clamp(38px, 10vh, 50px);
+      min-width: clamp(42px, 16vw, 58px);
+      padding: 0 8px;
+      background: #171717;
+      color: white;
+      border: 1px solid var(--line);
+      font-size: clamp(11px, 3.8vw, 14px);
+    }
+
+    .small-text {
+      display: none;
+    }
+
+    .auth-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: grid;
+      align-content: center;
+      gap: 8px;
+      padding: 12px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(255, 212, 59, .18), transparent 35%),
+        #050505;
+      overflow: hidden;
+    }
+
+    .auth-screen.hidden { display: none; }
+
+    .auth-card {
+      display: grid;
+      gap: 7px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 12px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .auth-card h1 {
+      margin: 0;
+      color: var(--gold);
+      font-size: clamp(20px, 8vw, 32px);
+      line-height: .95;
+      letter-spacing: -0.06em;
+    }
+
+    .auth-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(10px, 3.5vw, 13px);
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .auth-card input {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: #fff;
+      color: #111;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .sign-btn {
+      min-height: 42px;
+      background: var(--gold);
+      color: #111;
+      font-size: 15px;
+    }
+
+    .auth-msg {
+      min-height: 16px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      white-space: pre-line;
+    }
+
+    @media (max-height: 250px) {
+      .subtitle, .small-text { display: none; }
+      .screen { gap: 3px; }
+      .point-btn, .start-btn, .mini-btn { min-height: 34px; border-radius: 10px; }
+      #reader { width: min(100%, 48vh, 180px); }
+      .feedback { padding: 7px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <section id="authScreen" class="auth-screen">
+    <div class="auth-card">
+      <h1>Watch Scanner</h1>
+      <p>Sign in once. After that, this page opens fast for QR scanning.</p>
+      <input id="teacherEmail" type="email" placeholder="Email" autocomplete="username">
+      <input id="teacherPassword" type="password" placeholder="Password" autocomplete="current-password">
+      <button id="signInButton" class="sign-btn" type="button">SIGN IN</button>
+      <div id="authMsg" class="auth-msg">Firebase login only.</div>
+    </div>
+  </section>
+
+  <main class="screen" aria-label="Watch scanner">
+    <header class="topbar">
+      <div class="brand">
+        <div class="title">Watch Scanner</div>
+        <div id="teacherLine" class="subtitle">Developed by Mr. John Rey Tubello (Sir JR)</div>
+      </div>
+      <div id="termPill" class="status-pill">Term</div>
+    </header>
+
+    <section class="points-grid" aria-label="Quick points">
+      <button class="point-btn active" type="button" data-points="1">+1</button>
+      <button class="point-btn" type="button" data-points="2">+2</button>
+      <button class="point-btn" type="button" data-points="3">+3</button>
+      <button class="point-btn" type="button" data-points="5">+5</button>
+    </section>
+
+    <section class="scanner-wrap" aria-label="QR scanner area">
+      <div id="reader"></div>
+      <div id="placeholder" class="scan-placeholder">
+        <div>
+          <strong id="placeholderTitle">TAP START</strong>
+          <span id="placeholderSub">No scroll • quick feedback</span>
+        </div>
+      </div>
+      <div id="feedback" class="feedback" role="status" aria-live="polite">
+        <div id="fbTitle" class="fb-title">✅ RECORDED</div>
+        <div id="fbName" class="fb-name">STUDENT NAME</div>
+        <div id="fbPoints" class="fb-points">+1 POINT</div>
+        <div id="fbTotal" class="fb-total">TOTAL: 0</div>
+      </div>
+    </section>
+
+    <footer class="bottom">
+      <button id="startButton" class="start-btn" type="button">START</button>
+      <button id="syncButton" class="mini-btn" type="button">SYNC</button>
+      <button id="signOutButton" class="mini-btn" type="button">OUT</button>
+      <div id="statusLine" class="small-text">Ready.</div>
+    </footer>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      collection,
+      doc,
+      getDoc,
+      getFirestore,
+      increment,
+      runTransaction,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBbY8IScU02QfS9Xda175wIJ2dUjrJTIo4",
+      authDomain: "recitation-central.firebaseapp.com",
+      projectId: "recitation-central",
+      storageBucket: "recitation-central.firebasestorage.app",
+      messagingSenderId: "805395065834",
+      appId: "1:805395065834:web:2e71c87ab0578ef4df6093",
+      measurementId: "G-BN4V8X3JE5"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const authScreen = document.getElementById("authScreen");
+    const teacherEmail = document.getElementById("teacherEmail");
+    const teacherPassword = document.getElementById("teacherPassword");
+    const signInButton = document.getElementById("signInButton");
+    const signOutButton = document.getElementById("signOutButton");
+    const authMsg = document.getElementById("authMsg");
+    const pointButtons = Array.from(document.querySelectorAll(".point-btn"));
+    const startButton = document.getElementById("startButton");
+    const syncButton = document.getElementById("syncButton");
+    const statusLine = document.getElementById("statusLine");
+    const placeholder = document.getElementById("placeholder");
+    const placeholderTitle = document.getElementById("placeholderTitle");
+    const placeholderSub = document.getElementById("placeholderSub");
+    const feedback = document.getElementById("feedback");
+    const fbTitle = document.getElementById("fbTitle");
+    const fbName = document.getElementById("fbName");
+    const fbPoints = document.getElementById("fbPoints");
+    const fbTotal = document.getElementById("fbTotal");
+    const termPill = document.getElementById("termPill");
+
+    const QUEUE_KEY = "recitationWatchPendingQueueV1";
+    const SCAN_COOLDOWN_MS = 5500;
+    const SCANNER_PAUSE_MS = 450;
+    let selectedPoints = 1;
+    let scannerStarted = false;
+    let scanPauseActive = false;
+    let audioContext = null;
+    let feedbackTimer = null;
+    const recentLocks = new Map();
+
+    const scanner = new Html5Qrcode("reader", {
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      verbose: false
+    });
+
+    function normalizeStudentId(value) {
+      return String(value || "").trim();
+    }
+
+    function getSchoolYear(date) {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      if (month >= 1 && month <= 4) return (year - 1) + "-" + year;
+      return year + "-" + (year + 1);
+    }
+
+    function getTermInfo(date = new Date()) {
+      const monthDay = (date.getMonth() + 1) * 100 + date.getDate();
+      const schoolYear = getSchoolYear(date);
+
+      if (monthDay >= 601 && monthDay <= 909) return { id: "term1", name: "Term 1", schoolYear };
+      if (monthDay >= 910 && monthDay <= 1215) return { id: "term2", name: "Term 2", schoolYear };
+      if (monthDay >= 104 && monthDay <= 403) return { id: "term3", name: "Term 3", schoolYear };
+      return { id: "outOfTerm", name: "Outside Term", schoolYear };
+    }
+
+    function getDefaultActivityName() {
+      const term = getTermInfo();
+      const todayText = new Intl.DateTimeFormat("en-PH", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit"
+      }).format(new Date());
+      return "Recitation - " + term.name + " - " + todayText;
+    }
+
+    function updateTermPill() {
+      const term = getTermInfo();
+      termPill.textContent = term.name;
+    }
+
+    function setStatus(message) {
+      statusLine.textContent = message;
+    }
+
+    function setPlaceholder(title, sub) {
+      placeholderTitle.textContent = title;
+      placeholderSub.textContent = sub;
+    }
+
+    function unlockFeedback() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      if (!audioContext) audioContext = new AudioContext();
+      if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+    }
+
+    function beep(frequency, duration, volume) {
+      if (!audioContext || audioContext.state !== "running") return;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.value = volume;
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      setTimeout(() => oscillator.stop(), duration);
+    }
+
+    function successFeedback() {
+      unlockFeedback();
+      beep(780, 70, 0.08);
+      setTimeout(() => beep(1050, 90, 0.07), 80);
+      if ("vibrate" in navigator) navigator.vibrate([35, 18, 35]);
+    }
+
+    function errorFeedback() {
+      unlockFeedback();
+      beep(220, 150, 0.08);
+      if ("vibrate" in navigator) navigator.vibrate([90, 35, 90]);
+    }
+
+    function waitFeedback() {
+      unlockFeedback();
+      beep(420, 70, 0.06);
+      if ("vibrate" in navigator) navigator.vibrate(55);
+    }
+
+    function showFeedback(kind, title, name, pointsText, totalText) {
+      window.clearTimeout(feedbackTimer);
+      feedback.className = "feedback " + (kind || "");
+      fbTitle.textContent = title;
+      fbName.textContent = name || "";
+      fbPoints.textContent = pointsText || "";
+      fbTotal.textContent = totalText || "";
+      feedback.style.display = "block";
+      requestAnimationFrame(() => feedback.classList.add("show"));
+      feedbackTimer = window.setTimeout(() => {
+        feedback.classList.remove("show");
+        window.setTimeout(() => {
+          feedback.style.display = "none";
+        }, 150);
+      }, kind === "error" ? 2300 : 1500);
+    }
+
+    function cleanupLocks() {
+      const now = Date.now();
+      recentLocks.forEach((expiresAt, key) => {
+        if (expiresAt <= now) recentLocks.delete(key);
+      });
+    }
+
+    function buildLockKey(studentId, points) {
+      return studentId.toUpperCase() + "::" + String(points);
+    }
+
+    function loadQueue() {
+      try {
+        return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveQueue(queue) {
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+    }
+
+    function queueScan(studentId, points) {
+      const queue = loadQueue();
+      queue.push({
+        studentId,
+        points,
+        activity: getDefaultActivityName(),
+        term: getTermInfo(),
+        queuedAt: Date.now()
+      });
+      saveQueue(queue);
+      setStatus("Queued: " + queue.length);
+      showFeedback("saved", "📦 SAVED", studentId, "+" + points + " QUEUED", "WILL SYNC LATER");
+    }
+
+    async function writeScan(studentId, points, activity, term, extraLog = {}) {
+      const studentRef = doc(db, "students", studentId);
+      const logRef = doc(collection(db, "recitationLogs"));
+      const termField = "termTotals." + term.id;
+      let result = null;
+
+      await runTransaction(db, async (transaction) => {
+        const studentSnap = await transaction.get(studentRef);
+        if (!studentSnap.exists()) {
+          throw new Error("Student ID not found: " + studentId);
+        }
+
+        const student = studentSnap.data() || {};
+        const oldTotal = Number(student.totalPoints || 0);
+        const newTotal = oldTotal + points;
+        result = {
+          fullName: student.fullName || studentId,
+          section: student.section || "",
+          total: newTotal
+        };
+
+        transaction.update(studentRef, {
+          totalPoints: increment(points),
+          [termField]: increment(points),
+          latestAt: serverTimestamp(),
+          latestPoints: points,
+          latestTermId: term.id,
+          latestTermName: term.name,
+          updatedAt: serverTimestamp()
+        });
+
+        transaction.set(logRef, {
+          studentId,
+          fullName: student.fullName || "",
+          section: student.section || "",
+          points,
+          activity,
+          termId: term.id,
+          termName: term.name,
+          schoolYear: term.schoolYear,
+          watchMode: true,
+          createdAt: serverTimestamp(),
+          ...extraLog
+        });
+      });
+
+      return result;
+    }
+
+    async function syncQueue() {
+      if (!auth.currentUser) return;
+      let queue = loadQueue();
+      if (!queue.length) {
+        setStatus("No pending sync.");
+        showFeedback("saved", "✅ CLEAR", "No pending queue", "", "");
+        return;
+      }
+
+      setStatus("Syncing " + queue.length + "...");
+      const remaining = [];
+      for (const item of queue) {
+        try {
+          await writeScan(
+            item.studentId,
+            Number(item.points || 1),
+            item.activity || getDefaultActivityName(),
+            item.term || getTermInfo(),
+            { syncedFromWatchQueue: true, queuedAtMs: item.queuedAt || null }
+          );
+        } catch (error) {
+          remaining.push(item);
+        }
+      }
+
+      saveQueue(remaining);
+      if (remaining.length) {
+        setStatus("Pending: " + remaining.length);
+        showFeedback("wait", "⚠️ PARTIAL", "Some scans stayed queued", "", "PENDING: " + remaining.length);
+      } else {
+        setStatus("Synced.");
+        showFeedback("saved", "✅ SYNCED", "All pending scans", "", "");
+        successFeedback();
+      }
+    }
+
+    async function recordStudent(studentIdValue) {
+      unlockFeedback();
+      cleanupLocks();
+      const studentId = normalizeStudentId(studentIdValue);
+      const points = selectedPoints;
+      const activity = getDefaultActivityName();
+      const term = getTermInfo();
+
+      if (!auth.currentUser) {
+        showFeedback("error", "❌ LOGIN", "Sign in first", "", "");
+        errorFeedback();
+        return;
+      }
+
+      if (!studentId) {
+        showFeedback("error", "❌ NO ID", "Scan again", "", "");
+        errorFeedback();
+        return;
+      }
+
+      const lockKey = buildLockKey(studentId, points);
+      if (recentLocks.has(lockKey)) {
+        showFeedback("wait", "⚠️ WAIT", "Already scanned", "", "Move to next");
+        waitFeedback();
+        return;
+      }
+
+      recentLocks.set(lockKey, Date.now() + SCAN_COOLDOWN_MS);
+      setStatus("Saving " + studentId + "...");
+
+      try {
+        const saved = await writeScan(studentId, points, activity, term);
+        setStatus("Recorded. Ready.");
+        showFeedback("", "✅ RECORDED", saved.fullName, "+" + points + " POINT" + (points === 1 ? "" : "S"), "TOTAL: " + saved.total);
+        successFeedback();
+        if (navigator.onLine) syncQueue().catch(() => {});
+      } catch (error) {
+        if (!navigator.onLine || /offline|network|unavailable|failed/i.test(error.message)) {
+          queueScan(studentId, points);
+          waitFeedback();
+          return;
+        }
+
+        recentLocks.delete(lockKey);
+        setStatus("Failed. Try again.");
+        showFeedback("error", "❌ FAILED", error.message.replace(/^FirebaseError:\s*/i, ""), "", "");
+        errorFeedback();
+      }
+    }
+
+    function pauseScannerBriefly() {
+      if (!scannerStarted || scanPauseActive) return;
+      scanPauseActive = true;
+      try { scanner.pause(true); } catch (error) {}
+      window.setTimeout(() => {
+        scanPauseActive = false;
+        if (!scannerStarted) return;
+        try { scanner.resume(); } catch (error) {}
+      }, SCANNER_PAUSE_MS);
+    }
+
+    async function startScanner() {
+      if (scannerStarted) return;
+      unlockFeedback();
+      startButton.disabled = true;
+      setPlaceholder("STARTING", "Opening camera...");
+      setStatus("Starting camera...");
+
+      try {
+        const viewport = Math.min(window.innerWidth || 220, window.innerHeight || 260);
+        const qrSize = Math.max(115, Math.min(190, Math.floor(viewport * 0.58)));
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 12, qrbox: { width: qrSize, height: qrSize }, aspectRatio: 1, disableFlip: true },
+          (decodedText) => {
+            if (scanPauseActive) return;
+            pauseScannerBriefly();
+            recordStudent(decodedText);
+          }
+        );
+
+        scannerStarted = true;
+        startButton.textContent = "STOP";
+        startButton.classList.add("stop");
+        startButton.disabled = false;
+        placeholder.style.display = "none";
+        setStatus("Ready to scan.");
+      } catch (error) {
+        startButton.disabled = false;
+        setPlaceholder("CAMERA ERR", "Try browser permission");
+        setStatus("Camera error.");
+        showFeedback("error", "❌ CAMERA", error.message, "", "");
+        errorFeedback();
+      }
+    }
+
+    async function stopScanner() {
+      if (!scannerStarted) return;
+      startButton.disabled = true;
+      try { await scanner.stop(); } catch (error) {}
+      scannerStarted = false;
+      scanPauseActive = false;
+      startButton.textContent = "START";
+      startButton.classList.remove("stop");
+      startButton.disabled = false;
+      placeholder.style.display = "grid";
+      setPlaceholder("TAP START", "No scroll • quick feedback");
+      setStatus("Stopped.");
+    }
+
+    async function signInTeacher() {
+      const email = teacherEmail.value.trim();
+      const password = teacherPassword.value;
+      if (!email || !password) {
+        authMsg.textContent = "Email and password required.";
+        return;
+      }
+
+      signInButton.disabled = true;
+      authMsg.textContent = "Signing in...";
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        teacherPassword.value = "";
+      } catch (error) {
+        authMsg.textContent = "Sign in failed.\n" + error.message;
+      } finally {
+        signInButton.disabled = false;
+      }
+    }
+
+    function updatePointButtons() {
+      pointButtons.forEach((button) => {
+        button.classList.toggle("active", Number(button.dataset.points) === selectedPoints);
+      });
+    }
+
+    pointButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        unlockFeedback();
+        selectedPoints = Number(button.dataset.points || 1);
+        updatePointButtons();
+        setStatus("Selected +" + selectedPoints + ".");
+      });
+    });
+
+    startButton.addEventListener("click", () => {
+      if (scannerStarted) stopScanner();
+      else startScanner();
+    });
+
+    syncButton.addEventListener("click", () => {
+      unlockFeedback();
+      syncQueue().catch((error) => {
+        showFeedback("error", "❌ SYNC", error.message, "", "");
+      });
+    });
+
+    signInButton.addEventListener("click", signInTeacher);
+    teacherPassword.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") signInTeacher();
+    });
+
+    signOutButton.addEventListener("click", async () => {
+      await stopScanner();
+      await signOut(auth);
+    });
+
+    window.addEventListener("online", () => {
+      setStatus("Online. Syncing...");
+      syncQueue().catch(() => {});
+    });
+
+    window.addEventListener("resize", () => {
+      document.documentElement.style.setProperty("--vh", window.innerHeight + "px");
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      authScreen.classList.toggle("hidden", Boolean(user));
+      if (user) {
+        setStatus("Signed in. Tap START.");
+        syncQueue().catch(() => {});
+      } else {
+        stopScanner();
+        setStatus("Please sign in.");
+      }
+    });
+
+    updateTermPill();
+    updatePointButtons();
+    setInterval(updateTermPill, 60000);
+  </script>
+</body>
+</html>
